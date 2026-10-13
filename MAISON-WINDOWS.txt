@@ -1,0 +1,57 @@
+LANTERN DIRECT — MAISON SUR IPHONE AVEC UN PONT WINDOWS
+
+Windows 10 2004 ou plus récent / Windows 11 x64, Bluetooth LE.
+Aucune installation de Node.js ou de .NET nécessaire.
+
+1. Extraire TOUT LanternDirect-Windows-HomeKit.zip dans un dossier permanent,
+   par exemple Documents\LanternDirect. Ne pas ouvrir le programme depuis le ZIP.
+   Garder node.exe et le dossier homekit à côté de LanternDirect.exe.
+2. Allumer les LED, activer le Bluetooth du PC. Fermer Magic Lantern et les
+   autres applications Bluetooth sur les téléphones : une connexion à la fois.
+3. Lancer LanternDirect.exe, rechercher les LED et connecter le contrôleur.
+   Vérifier rouge, vert et bleu avec les commandes Windows.
+4. Cliquer sur « Activer Maison ». À la première activation, les LED sont
+   éteintes pour partir d'un état connu. Les réglages Maison sont ensuite
+   conservés et réappliqués après une reconnexion Bluetooth.
+5. Autoriser node.exe dans le pare-feu Windows pour les réseaux PRIVÉS.
+   PC et iPhone doivent être sur le même réseau local, sans isolation des
+   clients Wi-Fi. HomeKit utilise TCP 51827 et la découverte mDNS UDP 5353.
+   Aucune redirection de port Internet n'est nécessaire.
+6. Cliquer « Code d’appairage ». Sur l’iPhone : Maison → + → Ajouter un
+   accessoire, puis scanner le QR code affiché. Accepter l’accessoire non
+   certifié si Maison le demande. Si la caméra échoue, utiliser le code
+   numérique avec « Plus d’options » / « Mon accessoire n’est pas affiché ici ».
+7. Utiliser Maison ou Siri : allumage, luminosité, couleur. Le code est
+   généré pour votre contrôleur et reste le même après redémarrage du PC.
+8. Cocher « Démarrer le pont avec Windows » pour le prochain démarrage de
+   session. Fermer la fenêtre laisse le pont actif près de l’horloge.
+   Clic droit sur l’icône → « Quitter le pont » arrête vraiment le programme.
+
+Le PC doit rester allumé, connecté au réseau, dans votre session Windows,
+à portée Bluetooth, sans mise en veille. Si le PC dort ou si les LED sont
+injoignables, Maison affiche « Aucune réponse ». La reconnexion est automatique.
+Vous n’avez pas besoin de l’application iOS Lantern Direct pour Maison.
+L’IPA fourni séparément reste destiné au contrôle Bluetooth direct.
+Pour contrôler Maison à distance ou exécuter certaines automatisations,
+Apple exige un concentrateur compatible, par exemple HomePod ou Apple TV.
+
+Les effets RGBIC, le contrôle par segments et la musique ne sont pas exposés
+par cet accessoire « lampe » standard de Maison. Arrêter le pont pour utiliser
+les effets de l’application Windows ou le contrôle direct depuis un téléphone.
+Les valeurs Maison sont les dernières consignes appliquées : le contrôleur
+ne permet pas encore de lire son état physique dans cette implémentation.
+
+Données locales : %LOCALAPPDATA%\LanternDirect\homekit\<adresse LED>\
+Ce dossier contient l’identité, le code, les clés d’appairage et les consignes.
+Ne pas le partager. Déplacer le logiciel est possible sans effacer ce dossier,
+mais il faut décocher puis recocher le démarrage automatique depuis le nouveau
+chemin. L’exécutable seul ne contient pas le pont : utiliser le ZIP complet.
+
+Réinitialiser l’appairage : supprimer d’abord la lampe de Maison, quitter
+Lantern Direct, puis supprimer uniquement le dossier de ce contrôleur sous
+%LOCALAPPDATA%\LanternDirect\homekit\. Relancer et effectuer un nouvel appairage.
+
+VERSION DE TEST : compilation Windows et tests HomeKit chiffrés réussis.
+La liaison Windows Bluetooth → LED → Maison doit être confirmée sur vos appareils.
+L’exécutable est non signé ; n’accepter Windows SmartScreen que si le fichier
+provient de la release officielle Imdraks/reverse-magic et correspond au SHA-256.

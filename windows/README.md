@@ -1,6 +1,6 @@
 # Lantern Direct — Windows
 
-Client natif Windows du protocole BLE Magic Lantern 6.11.10. Version Windows x64, **Windows 10 version 2004 ou ultérieure / Windows 11**, avec adaptateur Bluetooth LE fonctionnel. Exécutable autonome .NET 10 ; aucun runtime .NET séparé n’est nécessaire. Pas de serveur, compte ou connexion Internet dans l’application.
+Client natif Windows du protocole BLE Magic Lantern 6.11.10. Version Windows x64, **Windows 10 version 2004 ou ultérieure / Windows 11**, avec adaptateur Bluetooth LE fonctionnel. Exécutable autonome .NET 10 ; aucun runtime .NET séparé n’est nécessaire. Le pont Maison sert HomeKit sur votre réseau local, sans compte ni cloud.
 
 ## Utiliser
 
@@ -13,11 +13,11 @@ Client natif Windows du protocole BLE Magic Lantern 6.11.10. Version Windows x64
 
 L’application vérifie le service FFF0 et la caractéristique FFF3. Elle sérialise les écritures, préfère une écriture GATT avec réponse et annule la session après une erreur ou une expiration. Aucun changement du câblage ou du nombre de LED n’est effectué. La dernière adresse est conservée uniquement dans un fichier local sous `%LOCALAPPDATA%/LanternDirect/`.
 
-Les valeurs affichées sont les réglages demandés, pas une lecture de l’état réel. Cette app BLE ne fournit pas de compatibilité Maison/HomeKit/Matter.
+Les valeurs affichées sont les réglages demandés, pas une lecture de l’état réel. Le pont Maison est disponible avec le paquet Windows complet ; voir [MAISON-WINDOWS.txt](../MAISON-WINDOWS.txt). Il ne fournit pas Matter.
 
 ## Validation et compilation
 
-Compilation Release Windows x64 réussie depuis Linux avec le SDK officiel .NET 10.0.401, après contrôle SHA-512 du téléchargement. Les 28 vérifications du protocole passent. Les APIs Windows, l’interface et la liaison radio ne sont pas exécutables dans ce cloud Linux : un essai sur votre PC et vos LED reste nécessaire. L’exécutable n’est pas signé avec un certificat de distribution Windows.
+Compilation Release Windows x64 réussie depuis Linux avec le SDK officiel .NET 10.0.401, après contrôle SHA-512 du téléchargement. Les 38 vérifications du protocole et de conversion des couleurs passent. Les APIs Windows, l’interface et la liaison radio ne sont pas exécutables dans ce cloud Linux : un essai sur votre PC et vos LED reste nécessaire. L’exécutable n’est pas signé avec un certificat de distribution Windows.
 
 Depuis la racine des sources avec le SDK .NET 10 :
 
@@ -31,3 +31,11 @@ Le projet active le ciblage Windows pour permettre la compilation croisée. Les 
 ## Patch v0.1.1
 
 Le contrôleur de l’utilisateur inverse les canaux rouge et vert avec les trames RGB de la première version. Le client envoie maintenant les couleurs choisies en GRB. Le bleu reste à la même position ; aucun réglage permanent du contrôleur n’est modifié. Les effets produits dans le contrôleur ne sont pas remappés.
+
+## Pont Maison v0.2.0
+
+Extraire le ZIP Windows HomeKit complet, garder `node.exe` et `homekit/` à côté du programme. Connecter le contrôleur, activer Maison et scanner le QR depuis Maison sur l’iPhone. Allumage, couleur et luminosité sont exposés par HAP-NodeJS. Autoriser Node dans le pare-feu des réseaux privés (TCP 51827, mDNS UDP 5353).
+
+Le programme reste actif près de l’horloge lorsque sa fenêtre est fermée. Le démarrage automatique utilise uniquement la clé Run de l’utilisateur courant et peut être décoché. Le PC doit rester allumé et dans une session ouverte, sans veille ; le pont n’est pas un service Windows. L’appairage et les consignes sont stockés sous `%LOCALAPPDATA%/LanternDirect/homekit/`. La première synchronisation éteint les LED ; les suivantes restaurent la dernière consigne Maison.
+
+Les commandes manuelles sont désactivées pendant le fonctionnement du pont pour préserver la cohérence des consignes Maison. Arrêter Maison pour utiliser les effets ou un client Bluetooth direct. HomeKit utilise un processus Node possédé par l’app Windows et un canal privé stdin/stdout ; aucune API Bluetooth HTTP non authentifiée n’est publiée. La détection de disponibilité et les commandes expirent en cas de perte du contrôleur.

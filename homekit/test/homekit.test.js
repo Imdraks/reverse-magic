@@ -1,0 +1,44 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs/promises');
+const os = require('node:os');
+const path = require('node:path');
+const { HAPStorage } = require('hap-nodejs');
+const HttpClient = require('hap-controller/lib/transport/ip/http-client').default;
+const { createAccessory } = require('../accessory');
+const { LightEngine } = require('../light-engine');
+const { loadStorage } = require('../storage');
+test('real encrypted HomeKit pairing, RGB writes, offline status and persisted identity', { timeout: 30000 }, async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lantern-hap-'));
+  const stored = await loadStorage(directory);
+  assert.deepEqual((await loadStorage(directory)).identity, stored.identity);
+  HAPStorage.setCustomStoragePath(path.join(directory, 'pairings'));
+  let connected = true;
+  const applied = [];
+  const engine = new LightEngine({ status: async () => ({ connected }), apply: async state => applied.push(state) }, stored);
+  const bridge = createAccessory(engine, { deviceId: 'ABCDEF123456', ...stored.identity, port: 0, bind: '127.0.0.1' });
+  let client;
+  try {
+    const listening = new Promise(resolve => bridge.accessory.once('listening', port => resolve(port)));
+    await bridge.publish(); const port = await listening;
+    const unauthenticated = await fetch(`http://127.0.0.1:${port}/accessories`); assert.equal(unauthenticated.status, 470);
+    client = new HttpClient(stored.identity.username, '127.0.0.1', port);
+    await assert.rejects(client.pairSetup('111-11-111'));
+    await client.close(); client = new HttpClient(stored.identity.username, '127.0.0.1', port);
+    await client.pairSetup(stored.identity.pincode);
+    const accessories = await client.getAccessories();
+    const service = accessories.accessories[0].services.find(s => s.type === '00000043-0000-1000-8000-0026BB765291');
+    assert.ok(service);
+    const iid = type => service.characteristics.find(c => c.type === `${type.padStart(8, '0')}-0000-1000-8000-0026BB765291`).iid;
+    const keys = { on: `1.${iid('25')}`, brightness: `1.${iid('8')}`, hue: `1.${iid('13')}`, saturation: `1.${iid('2F')}` };
+    await client.setCharacteristics({ [keys.on]: true, [keys.brightness]: 35, [keys.hue]: 120, [keys.saturation]: 100 });
+    assert.deepEqual(applied.at(-1), { on: true, brightness: 35, hue: 120, saturation: 100 });
+    let values = await client.getCharacteristics([keys.on, keys.hue]);
+    assert.equal(values.characteristics[0].value, 1); assert.equal(values.characteristics[1].value, 120);
+    connected = false;
+    values = await client.getCharacteristics([keys.on]); assert.equal(values.characteristics[0].status, -70402);
+    connected = true; await engine.refresh(); assert.deepEqual(applied.at(-1), engine.state);
+    assert.deepEqual((await loadStorage(directory)).state, engine.state);
+    await client.close(); client = undefined;
+  } finally { if (client) await client.close(); engine.close(); await bridge.stop(); await fs.rm(directory, { recursive: true, force: true }); }
+});

@@ -76,15 +76,16 @@ public sealed class BleController : IDisposable
         }
     }
 
-    public async Task SendAsync(byte[] bytes)
+    public async Task SendAsync(byte[] bytes, CancellationToken cancellationToken = default)
     {
         if (bytes.Length != 9 || bytes[0] != 0x7E || bytes[8] != 0xEF) throw new ArgumentException("Trame LED invalide.");
         var session = connection ?? throw new InvalidOperationException("Connectez vos LED.");
-        await writerLock.WaitAsync(session.Token);
+        using var operation = CancellationTokenSource.CreateLinkedTokenSource(session.Token, cancellationToken);
+        await writerLock.WaitAsync(operation.Token);
         try
         {
             if (!ReferenceEquals(connection, session) || !IsReady || output == null) throw new InvalidOperationException("Connexion LED indisponible.");
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(session.Token);
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(operation.Token);
             timeout.CancelAfter(TimeSpan.FromSeconds(5));
             using var buffer = new DataWriter();
             buffer.WriteBytes(bytes);
@@ -92,9 +93,9 @@ public sealed class BleController : IDisposable
                 ? GattWriteOption.WriteWithResponse : GattWriteOption.WriteWithoutResponse;
             var result = await output.WriteValueWithResultAsync(buffer.DetachBuffer(), option).AsTask(timeout.Token);
             if (result.Status != GattCommunicationStatus.Success) throw new IOException($"Échec de l’écriture Bluetooth : {result.Status}.");
-            await Task.Delay(60, session.Token);
+            await Task.Delay(60, operation.Token);
         }
-        catch { Disconnect(); throw; }
+        catch { if (ReferenceEquals(connection, session)) Disconnect(); throw; }
         finally { writerLock.Release(); }
     }
 

@@ -1,14 +1,15 @@
 # Lantern Direct
 
-Applications iOS et Windows de contrôle Bluetooth direct pour les LED utilisant le protocole Magic Lantern 6.11.10.
+Contrôle Bluetooth des LED Magic Lantern sur iOS et Windows, avec un **pont Windows pour l’application Maison de l’iPhone**.
 
-[**Télécharger la release v0.1.1 (version de test)**](https://github.com/Imdraks/reverse-magic/releases/tag/v0.1.1)
+[**Télécharger la release v0.2.0 (version de test)**](https://github.com/Imdraks/reverse-magic/releases/tag/v0.2.0)
 
-- [iOS — LanternDirect-unsigned.ipa](https://github.com/Imdraks/reverse-magic/releases/download/v0.1.1/LanternDirect-unsigned.ipa) : iOS 17 ou ultérieur ; signature nécessaire avant installation. Voir [le guide depuis Windows](INSTALLER-SUR-IPHONE.txt).
-- [Windows — LanternDirect.exe](https://github.com/Imdraks/reverse-magic/releases/download/v0.1.1/LanternDirect.exe) : Windows x64 avec Bluetooth LE ; exécutable autonome.
+- **Maison sur iPhone** : [LanternDirect-Windows-HomeKit.zip](https://github.com/Imdraks/reverse-magic/releases/download/v0.2.0/LanternDirect-Windows-HomeKit.zip). Extraire tout le ZIP, connecter les LED, activer Maison et scanner le QR code. Voir [le guide](MAISON-WINDOWS.txt). Le PC fait le pont entre Bluetooth et HomeKit et doit rester allumé. Aucune app iOS supplémentaire nécessaire.
+- **Windows, contrôle manuel** : [LanternDirect.exe](https://github.com/Imdraks/reverse-magic/releases/download/v0.2.0/LanternDirect.exe), Windows x64 avec Bluetooth LE. L’exécutable seul nécessite le ZIP complet pour activer Maison.
+- **iOS, Bluetooth direct** : [LanternDirect-unsigned.ipa](https://github.com/Imdraks/reverse-magic/releases/download/v0.2.0/LanternDirect-unsigned.ipa), iOS 17 ou ultérieur. Signature nécessaire ; voir [l’installation depuis Windows](INSTALLER-SUR-IPHONE.txt). IPA 1.0.1 inchangé depuis v0.1.1.
 
-La release inclut également les sources et les empreintes SHA-256. Voir [les instructions iOS](ios/README.md), [les instructions Windows](windows/README.md) et [le protocole](ios/PROTOCOL.md).
+Le pont expose allumage, couleur et luminosité. Les effets RGBIC et la musique restent dans les clients directs. Les couleurs sont envoyées en GRB pour corriger l’inversion rouge/vert du contrôleur. Les réglages Maison sont conservés localement et restaurés après reconnexion ; le protocole actuel ne fournit pas de lecture de l’état réel.
 
-Build iPhone et tests simulateur réussis ; compilation Windows et tests du protocole réussis. Le contrôle des LED réelles et l’interface Windows restent à essayer sur les appareils physiques. Ces apps BLE n’ajoutent pas de compatibilité Maison/HomeKit/Matter et ne fournissent pas encore de passerelle HomeKit.
+Validation : 38 vérifications Windows, tests d’appairage HomeKit chiffré et de coupure/reconnexion, compilation Windows x64. Le build iOS et ses 28 tests ont été validés pour v0.1.1. L’essai du pont sur vos appareils physiques reste nécessaire : le cloud Linux ne peut pas exécuter la radio Bluetooth Windows ni Maison.
 
-La version v0.1.1 corrige l’inversion rouge/vert du contrôleur en envoyant les couleurs en GRB, également pour le mode musical du microphone de l’iPhone.
+La release contient les sources et les SHA-256. Voir [Windows](windows/README.md), [HomeKit](homekit/README.md), [iOS](ios/README.md) et [le protocole Bluetooth](ios/PROTOCOL.md).

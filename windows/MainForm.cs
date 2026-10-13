@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace LanternDirect;
 
-public sealed class MainForm : Form
+public sealed partial class MainForm : Form
 {
     private sealed record Effect(string group, string name, int code, bool isScene)
     {
@@ -28,7 +28,7 @@ public sealed class MainForm : Form
     private bool controllerMic;
     private bool busy;
 
-    public MainForm()
+    public MainForm(bool homekitAtStartup = false)
     {
         Text = "Lantern Direct — LED Bluetooth";
         Width = 610; Height = 840;
@@ -65,12 +65,13 @@ public sealed class MainForm : Form
             if (devices.SelectedItem is not FoundLED selected) throw new InvalidOperationException("Choisissez votre contrôleur dans la liste.");
             await Connect(selected);
         }));
-        page.Controls.Add(Button("Déconnecter", async () =>
+        connectionPanel.Controls.Add(Button("Déconnecter", async () =>
         {
             StopScan(); ble.Disconnect(); controllerMic = false;
             status.Text = "Déconnecté."; await Task.CompletedTask;
         }));
 
+        InitializeHomeKit(page, homekitAtStartup);
         page.Controls.Add(controls);
         controls.Controls.Add(Heading("Lumière"));
         controls.Controls.Add(Row(
@@ -121,7 +122,7 @@ public sealed class MainForm : Form
             Button("Arrêter", StopMusic)));
         controls.Controls.Add(Row(new Label { Text = "Sensibilité (0–100 %)", AutoSize = true }, sensitivity,
             Button("Appliquer", () => ble.SendAsync(LedProtocol.Sensitivity(sensitivity.Value)))));
-        page.Controls.Add(new Label { Text = "Bluetooth direct, sans compte ni cloud. Les valeurs sont vos consignes, pas une lecture de l’état des LED. Les effets disponibles dépendent du contrôleur. Cette app n’ajoute pas de compatibilité Maison/HomeKit.", AutoSize = true, MaximumSize = new Size(535, 0), Padding = new Padding(0, 12, 0, 0) });
+        page.Controls.Add(new Label { Text = "Bluetooth direct, sans compte ni cloud. Les valeurs sont vos consignes, pas une lecture de l’état des LED. Les effets disponibles dépendent du contrôleur. Le pont Maison nécessite le paquet Windows complet et un PC allumé.", AutoSize = true, MaximumSize = new Size(535, 0), Padding = new Padding(0, 12, 0, 0) });
 
         ble.Found += item => OnUI(() =>
         {
@@ -136,7 +137,7 @@ public sealed class MainForm : Form
             status.Text = message;
         });
         scanTimer.Tick += (_, _) => { StopScan(); status.Text = found.Count == 0 ? "Aucune LED trouvée. Rapprochez-vous et fermez l’app Android." : "Choisissez votre contrôleur."; };
-        FormClosed += (_, _) => { scanTimer.Dispose(); ble.Dispose(); };
+        FormClosed += (_, _) => { StopHomeKit(); scanTimer.Dispose(); ble.Dispose(); };
     }
 
     private async Task Connect(FoundLED selected)
@@ -171,7 +172,7 @@ public sealed class MainForm : Form
             {
                 if (!IsDisposed) { status.Text = e is OperationCanceledException ? "Opération expirée ou connexion interrompue." : e.Message; MessageBox.Show(this, status.Text, "Lantern Direct", MessageBoxButtons.OK, MessageBoxIcon.Information); }
             }
-            finally { if (!IsDisposed) { busy = false; connectionPanel.Enabled = true; controls.Enabled = ble.IsReady; UseWaitCursor = false; } }
+            finally { if (!IsDisposed) { busy = false; connectionPanel.Enabled = homeKit == null && !reconnecting; controls.Enabled = ble.IsReady && homeKit == null && !reconnecting; UseWaitCursor = false; } }
         };
         return button;
     }

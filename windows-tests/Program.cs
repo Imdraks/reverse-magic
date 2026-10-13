@@ -40,4 +40,16 @@ Reject(() => LedProtocol.Sensitivity(-1));
 Reject(() => LedProtocol.Effect(256));
 Reject(() => LedProtocol.Scene(-1));
 Reject(() => LedProtocol.MicEffect(8));
+Check(new HomeKitLightState(true, 35, 0, 100).Frames()[1], "7E 07 05 03 00 FF 00 10 EF");
+Check(new HomeKitLightState(true, 35, 120, 100).Frames()[1], "7E 07 05 03 FF 00 00 10 EF");
+Check(new HomeKitLightState(true, 35, 240, 100).Frames()[1], "7E 07 05 03 00 00 FF 10 EF");
+Check(new HomeKitLightState(true, 35, 360, 100).Frames()[1], "7E 07 05 03 00 FF 00 10 EF");
+Check(new HomeKitLightState(true, 35, 120, 0).Frames()[1], "7E 07 05 03 FF FF FF 10 EF");
+Check(new HomeKitLightState(true, 35, 120, 100).Frames()[2], "7E 04 01 23 FF FF FF 00 EF");
+Check(new HomeKitLightState(false, 35, 120, 100).Frames().Single(), "7E 04 04 00 00 00 FF 00 EF");
+foreach (var state in new[] { new HomeKitLightState(true, -1, 0, 0), new HomeKitLightState(true, 50, double.NaN, 0), new HomeKitLightState(true, 50, 0, 101) })
+{
+    try { state.Frames(); throw new Exception("Invalid HomeKit state accepted"); }
+    catch (ArgumentException) { count++; }
+}
 Console.WriteLine($"{count} protocol checks passed; 0 failures.");

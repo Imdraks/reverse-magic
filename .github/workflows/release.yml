@@ -6,7 +6,7 @@ on:
       release_tag:
         description: Release version tag
         required: true
-        default: v0.1.1
+        default: v0.2.0
         type: string
       ios_run_id:
         description: Successful iOS build run for the same app sources
@@ -32,11 +32,24 @@ jobs:
         with:
           dotnet-version: '10.0.401'
 
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.19.0'
+
+      - name: Verify HomeKit pairing and controller behavior
+        run: |
+          node --version
+          npm ci --prefix homekit --ignore-scripts --no-audit --no-fund
+          npm test --prefix homekit
+
       - name: Verify Windows protocol
         run: dotnet run --project windows-tests/ProtocolChecks.csproj
 
       - name: Build Windows x64 standalone application
         run: dotnet publish windows/LanternDirect.csproj -c Release -r win-x64 -o release/windows -p:ContinuousIntegrationBuild=true
+
+      - name: Package Windows HomeKit bridge with verified Node runtime
+        run: python3 scripts/package-homekit.py --exe release/windows/LanternDirect.exe --output release/LanternDirect-Windows-HomeKit.zip
 
       - name: Fetch the validated iOS build
         run: |
@@ -70,9 +83,9 @@ jobs:
           cp release/windows/LanternDirect.exe release/LanternDirect.exe
           cp INSTALLER-SUR-IPHONE.txt release/
           git archive --format=zip HEAD ios .github/workflows/ios-build.yml > release/LanternDirect-iOS-sources.zip
-          git archive --format=zip HEAD windows windows-tests ios/PROTOCOL.md > release/LanternDirect-Windows-sources.zip
+          git archive --format=zip HEAD windows windows-tests homekit scripts/package-homekit.py MAISON-WINDOWS.txt ios/PROTOCOL.md > release/LanternDirect-Windows-sources.zip
           cd release
-          sha256sum LanternDirect-unsigned.ipa LanternDirect.exe LanternDirect-iOS-sources.zip LanternDirect-Windows-sources.zip INSTALLER-SUR-IPHONE.txt > SHA256SUMS.txt
+          sha256sum LanternDirect-Windows-HomeKit.zip LanternDirect-unsigned.ipa LanternDirect.exe LanternDirect-iOS-sources.zip LanternDirect-Windows-sources.zip INSTALLER-SUR-IPHONE.txt > SHA256SUMS.txt
 
       - name: Upload assets to draft and publish
         run: |
@@ -83,16 +96,16 @@ jobs:
           PY
           else
             gh release create "$RELEASE_TAG" --draft --prerelease --target "$GITHUB_SHA" \
-              --title "Lantern Direct $RELEASE_TAG — iOS et Windows" --notes-file .github/release-notes.md
+              --title "Lantern Direct $RELEASE_TAG — Maison, iOS et Windows" --notes-file .github/release-notes.md
           fi
           gh release upload "$RELEASE_TAG" \
-            release/LanternDirect-unsigned.ipa release/LanternDirect.exe \
+            release/LanternDirect-Windows-HomeKit.zip release/LanternDirect-unsigned.ipa release/LanternDirect.exe \
             release/LanternDirect-iOS-sources.zip release/LanternDirect-Windows-sources.zip \
             release/INSTALLER-SUR-IPHONE.txt release/SHA256SUMS.txt --clobber
           gh release view "$RELEASE_TAG" --json assets > release/assets.json
           python3 - <<'PY'
           import json
-          expected = {'LanternDirect-unsigned.ipa', 'LanternDirect.exe',
+          expected = {'LanternDirect-Windows-HomeKit.zip', 'LanternDirect-unsigned.ipa', 'LanternDirect.exe',
                       'LanternDirect-iOS-sources.zip', 'LanternDirect-Windows-sources.zip',
                       'INSTALLER-SUR-IPHONE.txt', 'SHA256SUMS.txt'}
           assets = json.load(open('release/assets.json'))['assets']
@@ -100,4 +113,4 @@ jobs:
           assert all(asset['state'] == 'uploaded' and asset['size'] > 0 for asset in assets)
           PY
           gh release edit "$RELEASE_TAG" --draft=false --prerelease \
-            --title "Lantern Direct $RELEASE_TAG — iOS et Windows" --notes-file .github/release-notes.md
+            --title "Lantern Direct $RELEASE_TAG — Maison, iOS et Windows" --notes-file .github/release-notes.md
