@@ -34,6 +34,6 @@ Depuis la release v0.1.1, les clients iOS et Windows envoient les couleurs deman
 
 ## Validation effectuée
 
-Les 25 tests portables comparent des trames attendues issues des affectations du service Android, vérifient les limites d’entrée et exercent les invariants de la file d’attente. Le catalogue contient 241 entrées, dont 28 scènes ; noms et commandes ont été appariés après vérification de la longueur de chaque tableau. Les ressources de ce paquet de base sont en anglais, ce qui explique les noms d’effets anglais dans l’interface française.
+Les 28 tests portables comparent des trames attendues issues des affectations du service Android, vérifient les limites d’entrée et exercent les invariants de la file d’attente. Le catalogue contient 241 entrées, dont 28 scènes ; noms et commandes ont été appariés après vérification de la longueur de chaque tableau. Les ressources de ce paquet de base sont en anglais, ce qui explique les noms d’effets anglais dans l’interface française.
 
 L’analyse est statique. Elle ne constitue pas un test radio, une identification du firmware de votre modèle, ou une certification HomeKit/Matter. Aucun appareil LED n’est accessible dans ce cloud.
