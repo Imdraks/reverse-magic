@@ -1,13 +1,10 @@
-Première version de test de Lantern Direct pour les contrôleurs LED Bluetooth utilisant le protocole Magic Lantern 6.11.10.
+Patch v0.1.1 : correction de l’inversion rouge/vert constatée sur le contrôleur de l’utilisateur.
 
-- **iOS :** `LanternDirect-unsigned.ipa`, pour iOS 17 ou plus récent. IPA non signé : signer et installer depuis Windows avec un outil adapté, par exemple Sideloadly. Voir `INSTALLER-SUR-IPHONE.txt`.
-- **Windows :** `LanternDirect.exe`, application autonome x64 pour Windows 10 version 2004 ou ultérieure et Windows 11, avec Bluetooth LE. Aucun runtime .NET séparé nécessaire. Exécutable non signé.
-- Sources iOS et Windows incluses en archives ; empreintes dans `SHA256SUMS.txt`.
+- Les couleurs choisies sont envoyées en **GRB** dans les clients iOS et Windows. Le bleu reste inchangé.
+- Même correction pour les couleurs du mode musical utilisant le microphone de l’iPhone.
+- Ajout de vérifications sur rouge, vert, bleu, blanc, noir et les trames musicales : 28 tests Swift et 28 vérifications Windows.
+- Version applicative 1.0.1 ; build iOS 2. Aucun changement de la configuration persistante du contrôleur. Les effets produits par le firmware ne sont pas remappés par ce patch.
 
-Contrôle direct : marche/arrêt, couleur, luminosité, catalogue de 241 effets/scènes RGBIC et commandes musicales du contrôleur, si équipé. La version iOS propose également le microphone de l’iPhone ; Windows utilise uniquement celui du contrôleur.
+Télécharger `LanternDirect-unsigned.ipa` pour iOS 17 ou ultérieur, ou `LanternDirect.exe` pour Windows x64. L’IPA doit être signé avant installation ; voir `INSTALLER-SUR-IPHONE.txt`. Les sources et empreintes SHA-256 sont incluses.
 
-**Validation :** build iPhone et tests Xcode sur simulateur réussis sur GitHub Actions ; 25 tests portables Swift et 23 vérifications du protocole Windows réussis. Le build Windows a réussi en compilation croisée. Le Bluetooth réel, le microphone sur iPhone et l’interface Windows restent à tester sur les appareils physiques.
-
-Ces applications BLE n’ajoutent pas de compatibilité Maison/HomeKit/Matter et ne fournissent pas encore de passerelle HomeKit.
-
-Build iOS : https://github.com/Imdraks/reverse-magic/actions/runs/38413790988 (commit c8878d26863baef268eb92f0aa7ee8504341f853).
+Les essais de rendu lumineux doivent être confirmés sur les LED réelles. Les applications ne fournissent pas encore de passerelle Maison/HomeKit.

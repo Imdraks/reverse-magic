@@ -2,6 +2,16 @@ name: Publish iOS and Windows release
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release version tag
+        required: true
+        default: v0.1.1
+        type: string
+      ios_run_id:
+        description: Successful iOS build run for the same app sources
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -14,8 +24,8 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
-      RELEASE_TAG: v0.1.0
-      IOS_RUN_ID: '38413790988'
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      IOS_RUN_ID: ${{ inputs.ios_run_id }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
@@ -31,7 +41,12 @@ jobs:
       - name: Fetch the validated iOS build
         run: |
           mkdir -p release
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$IOS_RUN_ID" =~ ^[0-9]+$ ]]
           gh run view "$IOS_RUN_ID" --json conclusion --jq '.conclusion' | grep -x success
+          ios_commit=$(gh run view "$IOS_RUN_ID" --json headSha --jq '.headSha')
+          git fetch --no-tags origin "$ios_commit" --depth=1
+          git diff --exit-code "$ios_commit" HEAD -- ios/MagicLantern ios/Tests ios/LanternDirect.xcodeproj ios/Package.swift
           gh run download "$IOS_RUN_ID" --name LanternDirect-unsigned-IPA --dir release
           python3 - <<'PY'
           from pathlib import Path
@@ -43,6 +58,9 @@ jobs:
               binary = archive.read('Payload/LanternDirect.app/' + info['CFBundleExecutable'])
               assert info['CFBundleIdentifier'] == 'com.example.lanterndirect'
               assert struct.unpack('<II', binary[:8]) == (0xfeedfacf, 0x100000c)
+              expected = plistlib.loads(Path('ios/MagicLantern/Info.plist').read_bytes())
+              assert info['CFBundleShortVersionString'] == expected['CFBundleShortVersionString']
+              assert info['CFBundleVersion'] == expected['CFBundleVersion']
           print('Validated iPhone arm64 IPA payload.')
           PY
 
@@ -57,6 +75,15 @@ jobs:
 
       - name: Upload assets to draft and publish
         run: |
+          if gh release view "$RELEASE_TAG" --json isDraft > release/existing-release.json 2>/dev/null; then
+            python3 - <<'PY'
+          import json
+          assert json.load(open('release/existing-release.json'))['isDraft'], 'Refusing to overwrite a published release'
+          PY
+          else
+            gh release create "$RELEASE_TAG" --draft --prerelease --target "$GITHUB_SHA" \
+              --title "Lantern Direct $RELEASE_TAG — iOS et Windows" --notes-file .github/release-notes.md
+          fi
           gh release upload "$RELEASE_TAG" \
             release/LanternDirect-unsigned.ipa release/LanternDirect.exe \
             release/LanternDirect-iOS-sources.zip release/LanternDirect-Windows-sources.zip \
@@ -72,4 +99,4 @@ jobs:
           assert all(asset['state'] == 'uploaded' and asset['size'] > 0 for asset in assets)
           PY
           gh release edit "$RELEASE_TAG" --draft=false --prerelease \
-            --title 'Lantern Direct v0.1.0 — iOS et Windows' --notes-file .github/release-notes.md
+            --title "Lantern Direct $RELEASE_TAG — iOS et Windows" --notes-file .github/release-notes.md

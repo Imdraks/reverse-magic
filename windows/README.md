@@ -17,7 +17,7 @@ Les valeurs affichées sont les réglages demandés, pas une lecture de l’éta
 
 ## Validation et compilation
 
-Compilation Release Windows x64 réussie depuis Linux avec le SDK officiel .NET 10.0.401, après contrôle SHA-512 du téléchargement. Les 23 vérifications du protocole passent. Les APIs Windows, l’interface et la liaison radio ne sont pas exécutables dans ce cloud Linux : un essai sur votre PC et vos LED reste nécessaire. L’exécutable n’est pas signé avec un certificat de distribution Windows.
+Compilation Release Windows x64 réussie depuis Linux avec le SDK officiel .NET 10.0.401, après contrôle SHA-512 du téléchargement. Les 28 vérifications du protocole passent. Les APIs Windows, l’interface et la liaison radio ne sont pas exécutables dans ce cloud Linux : un essai sur votre PC et vos LED reste nécessaire. L’exécutable n’est pas signé avec un certificat de distribution Windows.
 
 Depuis la racine des sources avec le SDK .NET 10 :
 
@@ -27,3 +27,7 @@ dotnet publish windows/LanternDirect.csproj -c Release -r win-x64 -o output/wind
 ```
 
 Le projet active le ciblage Windows pour permettre la compilation croisée. Les dépendances Microsoft Windows et WinRT sont restaurées depuis NuGet. Le format des trames et leur provenance sont décrits dans `../ios/PROTOCOL.md`.
+
+## Patch v0.1.1
+
+Le contrôleur de l’utilisateur inverse les canaux rouge et vert avec les trames RGB de la première version. Le client envoie maintenant les couleurs choisies en GRB. Le bleu reste à la même position ; aucun réglage permanent du contrôleur n’est modifié. Les effets produits dans le contrôleur ne sont pas remappés.

@@ -11,11 +11,24 @@ final class ProtocolTests: XCTestCase {
     func testPowerOffMatchesAPK() {
         XCTAssertEqual(hex(LanternProtocol.power(false)), "7E 04 04 00 00 00 FF 00 EF")
     }
-    func testRGBOrderAndUnsignedBytes() throws {
-        XCTAssertEqual(hex(try LanternProtocol.color(red: 255, green: 0, blue: 128)), "7E 07 05 03 FF 00 80 10 EF")
+    func testGRBOrderAndUnsignedBytes() throws {
+        XCTAssertEqual(hex(try LanternProtocol.color(red: 255, green: 0, blue: 128)), "7E 07 05 03 00 FF 80 10 EF")
     }
     func testMusicHasDifferentMarker() throws {
-        XCTAssertEqual(hex(try LanternProtocol.color(red: 10, green: 20, blue: 30, music: true)), "7E 07 05 03 0A 14 1E 20 EF")
+        XCTAssertEqual(hex(try LanternProtocol.color(red: 10, green: 20, blue: 30, music: true)), "7E 07 05 03 14 0A 1E 20 EF")
+    }
+    func testPrimaryColorsUseControllerGRBOrder() throws {
+        XCTAssertEqual(hex(try LanternProtocol.color(red: 255, green: 0, blue: 0)), "7E 07 05 03 00 FF 00 10 EF")
+        XCTAssertEqual(hex(try LanternProtocol.color(red: 0, green: 255, blue: 0)), "7E 07 05 03 FF 00 00 10 EF")
+        XCTAssertEqual(hex(try LanternProtocol.color(red: 0, green: 0, blue: 255)), "7E 07 05 03 00 00 FF 10 EF")
+    }
+    func testMusicUsesSameGRBOrder() throws {
+        XCTAssertEqual(hex(try LanternProtocol.color(red: 255, green: 0, blue: 0, music: true)), "7E 07 05 03 00 FF 00 20 EF")
+        XCTAssertEqual(hex(try LanternProtocol.color(red: 0, green: 255, blue: 0, music: true)), "7E 07 05 03 FF 00 00 20 EF")
+    }
+    func testNeutralColorsStayNeutral() throws {
+        XCTAssertEqual(hex(try LanternProtocol.color(red: 255, green: 255, blue: 255)), "7E 07 05 03 FF FF FF 10 EF")
+        XCTAssertEqual(hex(try LanternProtocol.color(red: 0, green: 0, blue: 0)), "7E 07 05 03 00 00 00 10 EF")
     }
     func testBrightnessUsesPercentNot255() throws {
         XCTAssertEqual(hex(try LanternProtocol.brightness(100)), "7E 04 01 64 FF FF FF 00 EF")

@@ -9,7 +9,7 @@ Application native SwiftUI pour contrôler directement en Bluetooth les LED util
 - Marche/arrêt, RGB, luminosité, vitesse, **241 entrées d’effets/scènes** extraites des ressources de l’APK, dans neuf familles. Le catalogue ne garantit pas que chaque modèle accepte tous les effets.
 - Mode musical : commandes du microphone du contrôleur, si équipé ; ou modulation des RGB par le microphone de l’iPhone, dix fois par seconde. Le traitement audio de l’iPhone est une implémentation nouvelle, pas une copie de l’algorithme Android. Il mesure les sons ambiants, pas le flux audio système. Aucun fichier audio n’est enregistré.
 - Envois séquentiels, remplacement des valeurs de curseur encore en attente, contrôle de capacité, gestion des erreurs et expiration des connexions/accusés de réception. Aucun réglage de câblage ou de nombre de pixels n’est modifié.
-- **25 tests XCTest passés** sur le protocole et sa file d’attente, compilés avec Swift 6.2.1 sous Linux. Syntaxe des fichiers de l’app vérifiée. Structure du projet contrôlée.
+- **28 tests XCTest passés** sur le protocole et sa file d’attente, compilés avec Swift 6.2.1 sous Linux. Syntaxe des fichiers de l’app vérifiée. Structure du projet contrôlée.
 - **App iOS compilée avec succès sur GitHub Actions macOS** : tests du protocole et tests dans le simulateur réussis, puis build Release pour iPhone et création d’un IPA non signé. Le [build validé](https://github.com/Imdraks/reverse-magic/actions/runs/38413790988) correspond au commit `c8878d26863baef268eb92f0aa7ee8504341f853`. Le Bluetooth physique, les permissions et le microphone doivent encore être testés sur votre iPhone. Aucun IPA signé n’est fourni.
 
 ## Installer sur un iPhone avec un Mac
@@ -45,7 +45,7 @@ xcodebuild -project LanternDirect.xcodeproj -scheme LanternDirect \
   -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
 ```
 
-Pour les tests Xcode, sélectionner un simulateur installé dans Xcode et utiliser **Product → Test**. Le schéma inclut les 25 tests. Le workflow GitHub a exécuté les tests Xcode sur un simulateur et le build Release `iphoneos` avec succès. Les commandes manuelles ci-dessus restent destinées à un Mac ; elles ne sont pas exécutables dans le cloud Linux.
+Pour les tests Xcode, sélectionner un simulateur installé dans Xcode et utiliser **Product → Test**. Le schéma inclut les 28 tests. Le workflow GitHub a exécuté les tests Xcode sur un simulateur et le build Release `iphoneos` avec succès. Les commandes manuelles ci-dessus restent destinées à un Mac ; elles ne sont pas exécutables dans le cloud Linux.
 
 `Package.swift` compile uniquement les fichiers portables `LanternProtocol.swift` et `WriteQueue.swift`. Le build iPhone réussi dans GitHub Actions vérifie séparément la compilation de SwiftUI, CoreBluetooth et AVFoundation.
 
@@ -69,3 +69,7 @@ Le projet n’ajoute pas de faux accessoire HomeKit et ne demande pas d’accès
 ## Provenance
 
 Voir `PROTOCOL.md`. L’APK fourni a été identifié par Androguard et analysé avec les outils REA 6.4.0 du ZIP utilisateur et le moteur JADX headless MCP 0.7.1 dont le SHA-256 a été vérifié. Les fichiers décompilés restent dans le dossier d’analyse du cloud ; l’APK n’est pas inclus dans cette livraison. Aucune connexion au serveur du fournisseur et aucune exécution de l’APK n’ont été nécessaires.
+
+## Patch v0.1.1
+
+Le contrôleur de l’utilisateur inverse les canaux rouge et vert avec les trames RGB de la première version. Le client envoie maintenant les couleurs choisies en GRB. Le bleu reste à la même position ; aucun réglage permanent du contrôleur n’est modifié. Les effets produits dans le contrôleur ne sont pas remappés.

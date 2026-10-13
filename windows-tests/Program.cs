@@ -14,7 +14,12 @@ void Reject(Action operation)
 }
 Check(LedProtocol.Power(true), "7E 04 04 01 00 01 FF 00 EF");
 Check(LedProtocol.Power(false), "7E 04 04 00 00 00 FF 00 EF");
-Check(LedProtocol.Color(255, 0, 128), "7E 07 05 03 FF 00 80 10 EF");
+Check(LedProtocol.Color(255, 0, 128), "7E 07 05 03 00 FF 80 10 EF");
+Check(LedProtocol.Color(255, 0, 0), "7E 07 05 03 00 FF 00 10 EF");
+Check(LedProtocol.Color(0, 255, 0), "7E 07 05 03 FF 00 00 10 EF");
+Check(LedProtocol.Color(0, 0, 255), "7E 07 05 03 00 00 FF 10 EF");
+Check(LedProtocol.Color(255, 255, 255), "7E 07 05 03 FF FF FF 10 EF");
+Check(LedProtocol.Color(0, 0, 0), "7E 07 05 03 00 00 00 10 EF");
 Check(LedProtocol.Brightness(100), "7E 04 01 64 FF FF FF 00 EF");
 Check(LedProtocol.Brightness(0), "7E 04 01 00 FF FF FF 00 EF");
 Check(LedProtocol.Effect(212), "7E 05 03 D4 06 FF FF 00 EF");

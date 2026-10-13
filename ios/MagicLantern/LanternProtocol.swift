@@ -28,7 +28,8 @@ public enum LanternProtocol {
         let r = try byte(red, range: 0...255, name: "rouge")
         let g = try byte(green, range: 0...255, name: "vert")
         let b = try byte(blue, range: 0...255, name: "bleu")
-        return Data([0x7E, 0x07, 0x05, 0x03, r, g, b, music ? 0x20 : 0x10, 0xEF])
+        // This controller renders RGB packets as GRB, as confirmed on the LEDs.
+        return Data([0x7E, 0x07, 0x05, 0x03, g, r, b, music ? 0x20 : 0x10, 0xEF])
     }
 
     public static func brightness(_ percent: Int, channel: Channel = .automatic) throws -> Data {
