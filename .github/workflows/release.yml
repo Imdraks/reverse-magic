@@ -1,0 +1,75 @@
+name: Publish iOS and Windows release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: v0.1.0
+      IOS_RUN_ID: '38413790988'
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '10.0.401'
+
+      - name: Verify Windows protocol
+        run: dotnet run --project windows-tests/ProtocolChecks.csproj
+
+      - name: Build Windows x64 standalone application
+        run: dotnet publish windows/LanternDirect.csproj -c Release -r win-x64 -o release/windows -p:ContinuousIntegrationBuild=true
+
+      - name: Fetch the validated iOS build
+        run: |
+          mkdir -p release
+          gh run view "$IOS_RUN_ID" --json conclusion --jq '.conclusion' | grep -x success
+          gh run download "$IOS_RUN_ID" --name LanternDirect-unsigned-IPA --dir release
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile, plistlib, struct
+          ipa = Path('release/LanternDirect-unsigned.ipa')
+          with zipfile.ZipFile(ipa) as archive:
+              assert archive.testzip() is None
+              info = plistlib.loads(archive.read('Payload/LanternDirect.app/Info.plist'))
+              binary = archive.read('Payload/LanternDirect.app/' + info['CFBundleExecutable'])
+              assert info['CFBundleIdentifier'] == 'com.example.lanterndirect'
+              assert struct.unpack('<II', binary[:8]) == (0xfeedfacf, 0x100000c)
+          print('Validated iPhone arm64 IPA payload.')
+          PY
+
+      - name: Package sources, installation guide and checksums
+        run: |
+          cp release/windows/LanternDirect.exe release/LanternDirect.exe
+          cp INSTALLER-SUR-IPHONE.txt release/
+          git archive --format=zip HEAD ios .github/workflows/ios-build.yml > release/LanternDirect-iOS-sources.zip
+          git archive --format=zip HEAD windows windows-tests ios/PROTOCOL.md > release/LanternDirect-Windows-sources.zip
+          cd release
+          sha256sum LanternDirect-unsigned.ipa LanternDirect.exe LanternDirect-iOS-sources.zip LanternDirect-Windows-sources.zip INSTALLER-SUR-IPHONE.txt > SHA256SUMS.txt
+
+      - name: Upload assets to draft and publish
+        run: |
+          gh release upload "$RELEASE_TAG" \
+            release/LanternDirect-unsigned.ipa release/LanternDirect.exe \
+            release/LanternDirect-iOS-sources.zip release/LanternDirect-Windows-sources.zip \
+            release/INSTALLER-SUR-IPHONE.txt release/SHA256SUMS.txt --clobber
+          gh release view "$RELEASE_TAG" --json assets > release/assets.json
+          python3 - <<'PY'
+          import json
+          expected = {'LanternDirect-unsigned.ipa', 'LanternDirect.exe',
+                      'LanternDirect-iOS-sources.zip', 'LanternDirect-Windows-sources.zip',
+                      'INSTALLER-SUR-IPHONE.txt', 'SHA256SUMS.txt'}
+          assets = json.load(open('release/assets.json'))['assets']
+          assert expected == {asset['name'] for asset in assets}
+          assert all(asset['state'] == 'uploaded' and asset['size'] > 0 for asset in assets)
+          PY
+          gh release edit "$RELEASE_TAG" --draft=false --prerelease \
+            --title 'Lantern Direct v0.1.0 — iOS et Windows' --notes-file .github/release-notes.md

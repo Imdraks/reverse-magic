@@ -1,0 +1,15 @@
+Lantern Direct — installer l’IPA depuis Windows
+
+Le fichier fourni par la compilation GitHub est NON SIGNÉ. Il ne s’installe pas directement depuis l’application Fichiers de l’iPhone.
+
+1. Télécharger Sideloadly depuis son site officiel : https://sideloadly.io/ et suivre ses prérequis Windows.
+2. Brancher l’iPhone au PC, le déverrouiller et autoriser le PC si iOS le demande.
+3. Ouvrir Sideloadly, choisir l’iPhone et charger LanternDirect-unsigned.ipa.
+4. Signer et installer avec votre propre compte Apple dans l’outil. Ne pas communiquer les identifiants dans le chat et ne pas les mettre dans le dépôt ou le workflow.
+5. Sur l’iPhone, approuver le profil développeur dans Réglages > Général > VPN et gestion de l’appareil si demandé, et activer le mode développeur si nécessaire.
+6. Ouvrir Lantern Direct, autoriser le Bluetooth, alimenter les LED puis choisir Rechercher mes LED. Fermer Magic Lantern sur l’autre téléphone pour libérer la connexion.
+7. Tester d’abord Allumer, une couleur et la luminosité. Tester les effets et la musique après ces commandes de base. Le micro de l’iPhone est demandé uniquement à l’activation de ce mode.
+
+Avec un compte Apple gratuit, la signature personnelle doit généralement être renouvelée après sept jours ; suivre les indications de l’outil et d’Apple. La chaîne de signature et l’installation sur votre appareil ne peuvent pas être validées dans ce cloud.
+
+Cette app utilise le protocole BLE FFF0/FFF3 de Magic Lantern 6.11.10. Elle ne rend pas le contrôleur compatible Maison/HomeKit/Matter. Une connexion directe à Maison exige un contrôleur compatible.
