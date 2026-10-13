@@ -10,7 +10,7 @@ Application native SwiftUI pour contrôler directement en Bluetooth les LED util
 - Mode musical : commandes du microphone du contrôleur, si équipé ; ou modulation des RGB par le microphone de l’iPhone, dix fois par seconde. Le traitement audio de l’iPhone est une implémentation nouvelle, pas une copie de l’algorithme Android. Il mesure les sons ambiants, pas le flux audio système. Aucun fichier audio n’est enregistré.
 - Envois séquentiels, remplacement des valeurs de curseur encore en attente, contrôle de capacité, gestion des erreurs et expiration des connexions/accusés de réception. Aucun réglage de câblage ou de nombre de pixels n’est modifié.
 - **25 tests XCTest passés** sur le protocole et sa file d’attente, compilés avec Swift 6.2.1 sous Linux. Syntaxe des fichiers de l’app vérifiée. Structure du projet contrôlée.
-- **App iOS complète non compilée ni exécutée ici** : ce cloud Linux ne possède pas Xcode ni les SDK iOS. Le Bluetooth physique, les permissions iOS et le microphone doivent être validés sur un iPhone. Aucun `.ipa` signé n’est fourni.
+- **App iOS compilée avec succès sur GitHub Actions macOS** : tests du protocole et tests dans le simulateur réussis, puis build Release pour iPhone et création d’un IPA non signé. Le [build validé](https://github.com/Imdraks/reverse-magic/actions/runs/38413790988) correspond au commit `c8878d26863baef268eb92f0aa7ee8504341f853`. Le Bluetooth physique, les permissions et le microphone doivent encore être testés sur votre iPhone. Aucun IPA signé n’est fourni.
 
 ## Installer sur un iPhone avec un Mac
 
@@ -27,7 +27,7 @@ Le simulateur permet de contrôler l’interface et de lancer les tests, mais ne
 
 Le dossier `.github/workflows/ios-build.yml`, à la racine de la livraison, prépare une compilation sur un runner macOS de GitHub. Il exécute les tests du protocole, les tests iOS dans un simulateur, puis construit l’app pour iPhone et prépare `LanternDirect-unsigned.ipa`. Il utilise les actions officielles GitHub épinglées à leurs commits. Aucun secret Apple n’est nécessaire pour cette compilation non signée.
 
-**Ce workflow n’a pas encore été publié ou exécuté.** Il faudra publier les dossiers `ios/` et `.github/` dans votre dépôt, puis récupérer l’artifact dans l’onglet Actions lorsque la compilation réussit. Les journaux permettront de corriger une éventuelle erreur de compilation des frameworks iOS qui ne peut pas être détectée sous Linux. Selon la visibilité du dépôt et votre offre GitHub, les runners macOS peuvent consommer des minutes facturables ; ne pas supposer qu’ils sont gratuits.
+**Workflow publié et première exécution réussie.** Télécharger [l’artifact IPA](https://github.com/Imdraks/reverse-magic/actions/runs/38413790988/artifacts/11824265867), puis extraire `LanternDirect-unsigned.ipa` de l’archive. Il est conservé par GitHub pendant 14 jours à partir de ce build. Le workflow a ensuite été réorganisé pour publier l’IPA avant les tests du simulateur ; ces tests restent requis et disposent d’une limite de quinze minutes. Une deuxième exécution redondante a été annulée après le succès de la première, sans changement de code de l’application. Selon la visibilité du dépôt et votre offre GitHub, les runners macOS peuvent consommer des minutes facturables ; ne pas supposer qu’ils sont gratuits.
 
 Un IPA non signé ne s’installe pas en le touchant sur l’iPhone. Depuis Windows, un outil de chargement tel que **Sideloadly** peut le signer et l’installer avec votre compte Apple, selon les conditions Apple et celles de l’outil. Saisir les identifiants uniquement dans l’outil choisi sur votre poste, jamais dans le chat ni dans le workflow. Les limitations et renouvellements dépendent de votre mode de signature. Cette chaîne d’installation n’a pas été testée dans le cloud.
 
@@ -45,9 +45,9 @@ xcodebuild -project LanternDirect.xcodeproj -scheme LanternDirect \
   -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
 ```
 
-Pour les tests Xcode, sélectionner un simulateur installé dans Xcode et utiliser **Product → Test**. Le schéma inclut les 25 tests. Les commandes Xcode ci-dessus sont fournies pour le Mac et n’ont pas été exécutées dans le cloud Linux.
+Pour les tests Xcode, sélectionner un simulateur installé dans Xcode et utiliser **Product → Test**. Le schéma inclut les 25 tests. Le workflow GitHub a exécuté les tests Xcode sur un simulateur et le build Release `iphoneos` avec succès. Les commandes manuelles ci-dessus restent destinées à un Mac ; elles ne sont pas exécutables dans le cloud Linux.
 
-`Package.swift` compile uniquement les fichiers portables `LanternProtocol.swift` et `WriteQueue.swift`. Un succès de `swift test` ne prouve donc pas que SwiftUI, CoreBluetooth et AVFoundation ont été compilés pour iOS.
+`Package.swift` compile uniquement les fichiers portables `LanternProtocol.swift` et `WriteQueue.swift`. Le build iPhone réussi dans GitHub Actions vérifie séparément la compilation de SwiftUI, CoreBluetooth et AVFoundation.
 
 ## Utilisation et limites
 

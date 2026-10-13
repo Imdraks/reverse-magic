@@ -4,4 +4,4 @@ Application iOS native de contrôle Bluetooth direct pour les LED utilisant le p
 
 Le workflow GitHub Actions compile le projet sur macOS, exécute les tests puis prépare un IPA non signé. Il faut ensuite une signature Apple pour l’installer sur un iPhone. Cette app BLE ne fournit pas de compatibilité directe avec Maison/HomeKit/Matter.
 
-L’application Windows reste à préparer après la priorité iOS.
+Ce dépôt contient le projet iOS. Le client Windows est développé et livré séparément.

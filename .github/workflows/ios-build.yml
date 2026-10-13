@@ -55,7 +55,7 @@ jobs:
           retention-days: 14
 
       - name: iOS simulator tests
-        timeout-minutes: 8
+        timeout-minutes: 15
         run: |
           set -o pipefail
           xcrun simctl list devices available --json > build/simulators.json
