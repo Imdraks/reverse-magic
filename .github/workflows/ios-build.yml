@@ -30,26 +30,6 @@ jobs:
           set -o pipefail
           swift test 2>&1 | tee ../build/logs/protocol-tests.log
 
-      - name: iOS simulator tests
-        run: |
-          set -o pipefail
-          xcrun simctl list devices available --json > build/simulators.json
-          simulator_id=$(python3 - <<'PY'
-          import json
-          data = json.load(open('build/simulators.json'))
-          candidates = [device for runtime, devices in data['devices'].items()
-                        if 'iOS' in runtime for device in devices
-                        if device.get('isAvailable') and 'iPhone' in device['name']]
-          if not candidates:
-              raise SystemExit('No iPhone simulator installed on this runner')
-          print(candidates[0]['udid'])
-          PY
-          )
-          xcodebuild -project ios/LanternDirect.xcodeproj -scheme LanternDirect \
-            -destination "platform=iOS Simulator,id=$simulator_id" \
-            -derivedDataPath build/simulator CODE_SIGNING_ALLOWED=NO test \
-            2>&1 | tee build/logs/ios-simulator-tests.log
-
       - name: Build unsigned iPhone application
         run: |
           set -o pipefail
@@ -73,6 +53,27 @@ jobs:
           path: LanternDirect-unsigned.ipa
           if-no-files-found: error
           retention-days: 14
+
+      - name: iOS simulator tests
+        timeout-minutes: 8
+        run: |
+          set -o pipefail
+          xcrun simctl list devices available --json > build/simulators.json
+          simulator_id=$(python3 - <<'PY'
+          import json
+          data = json.load(open('build/simulators.json'))
+          candidates = [device for runtime, devices in data['devices'].items()
+                        if 'iOS' in runtime for device in devices
+                        if device.get('isAvailable') and 'iPhone' in device['name']]
+          if not candidates:
+              raise SystemExit('No iPhone simulator installed on this runner')
+          print(candidates[0]['udid'])
+          PY
+          )
+          xcodebuild -project ios/LanternDirect.xcodeproj -scheme LanternDirect \
+            -destination "platform=iOS Simulator,id=$simulator_id" \
+            -derivedDataPath build/simulator CODE_SIGNING_ALLOWED=NO test \
+            2>&1 | tee build/logs/ios-simulator-tests.log
 
       - name: Upload build logs
         if: always()
