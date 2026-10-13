@@ -1,12 +1,15 @@
-Cette version ajoute le contrôle des LED dans l’application **Maison** de l’iPhone grâce à un pont Bluetooth/HomeKit sur votre PC Windows.
+Cette version ajoute un **pont Maison pour Linux et Raspberry Pi**, utilisable entièrement depuis le terminal ou SSH, avec démarrage automatique au boot.
 
-- Télécharger **LanternDirect-Windows-HomeKit.zip**, extraire tout le dossier, connecter les LED dans l’app Windows et cliquer sur **Activer Maison**, puis **Code d’appairage**.
-- Scanner le QR code depuis Maison. Allumage, luminosité et couleur sont exposés comme une lampe HomeKit ; la correction rouge/vert GRB est conservée.
-- Fermer la fenêtre laisse le pont actif près de l’horloge. Une option permet de le lancer à l’ouverture de session Windows. Reconnexion Bluetooth automatique et conservation de l’appairage.
-- Le paquet contient l’exécutable Windows x64, Node.js et les dépendances HomeKit. Aucun runtime séparé à installer. PC et iPhone sur le même réseau local ; autoriser node.exe dans le pare-feu pour les réseaux privés.
+- **Raspberry Pi OS 64 bits** (Pi 3/4/5 et Zero 2 W) : télécharger `LanternDirect-Linux-arm64.tar.gz`.
+- **PC Linux x64** (Debian 12/13, Ubuntu 24.04+) : télécharger `LanternDirect-Linux-x64.tar.gz`.
+- Extraire l’archive, installer Python 3.11+/venv et BlueZ, puis lancer `./install.sh`, `./lantern scan` et `./lantern bridge --device ADRESSE_DES_LED`.
+- Le terminal affiche le QR et le code Maison. `./lantern service --device ADRESSE_DES_LED --install` active le service systemd sous votre compte, sans session SSH ouverte. Les codes d’appairage restent hors des journaux ; les revoir avec `./lantern pairing --device ADRESSE_DES_LED`.
+- Commandes directes : on/off, couleur, luminosité, effets et micro du contrôleur. La correction rouge/vert GRB est conservée.
 
-**Le PC doit rester allumé, sans veille, à portée Bluetooth.** L’app iOS Lantern Direct n’est pas nécessaire pour Maison. Les effets RGBIC et la musique restent accessibles depuis le client Windows lorsque le pont est arrêté. La première activation éteint les LED ; ensuite les dernières consignes sont réappliquées après reconnexion. Les valeurs affichées sont les consignes, pas une lecture du contrôleur.
+Le runtime Node.js officiel et les dépendances HomeKit sont fournis ; Internet est nécessaire pour installer les dépendances Python la première fois. Le fonctionnement est ensuite local. Un OS **64 bits** est nécessaire pour les archives fournies ; le Pi Zero de première génération n’est pas pris en charge.
 
-`LanternDirect.exe` seul reste utilisable pour le contrôle Bluetooth manuel ; Maison nécessite le ZIP complet. L’IPA iOS 1.0.1 est inchangé par rapport à v0.1.1 : contrôle Bluetooth direct, signature nécessaire avant installation. Sources et SHA-256 inclus.
+**Le Pi doit rester alimenté, sur le même réseau local que l’iPhone et à portée Bluetooth.** Maison expose allumage, couleur et luminosité sans nécessiter l’app iOS Lantern Direct. Les effets et la musique restent dans le client terminal. La première synchronisation éteint les LED ; les suivantes restaurent la dernière consigne. Arrêter le pont avant le contrôle Bluetooth direct.
 
-Validation : 38 vérifications du protocole et de conversion des couleurs ; tests HomeKit avec appairage chiffré réel, refus d’accès sans appairage, commandes, indisponibilité Bluetooth, persistance et arrêt du serveur avec son parent. Compilation Windows x64 réussie. Les tests HomeKit utilisent un transport Bluetooth simulé : l’essai final avec Windows, vos LED et l’application Maison reste à confirmer. Accessoire HomeKit non certifié ; exécutable Windows non signé.
+Guide : [Linux / Raspberry Pi](https://github.com/Imdraks/reverse-magic/blob/main/linux/README.md). La release contient aussi les clients Windows, le ZIP Windows HomeKit complet et l’IPA iOS 1.0.1 inchangé, non signé et nécessitant une signature locale. Sources et SHA-256 inclus.
+
+Validation : tests Linux des trames, écritures sérialisées, annulation, reconnexion, service et processus HomeKit réel avec un client chiffré indépendant ; tests HomeKit existants et 38 vérifications Windows. Les paquets sont installés et vérifiés sur les runners Linux natifs x64 et ARM64. Le transport BLE des tests est simulé ; l’essai final avec le Raspberry Pi, vos LED et Maison reste nécessaire. Accessoire HomeKit non certifié.

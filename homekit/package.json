@@ -1,11 +1,11 @@
 {
   "name": "lantern-direct-homekit",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "HomeKit IP light accessory backed by the Windows Bluetooth controller",
+  "description": "HomeKit IP light accessory backed by the Windows or Linux Bluetooth controller",
   "main": "server.js",
   "scripts": { "test": "node --test test/*.test.js" },
-  "engines": { "node": "^24.0.0" },
+  "engines": { "node": "^22.0.0 || ^24.0.0" },
   "dependencies": { "hap-nodejs": "0.14.3", "qrcode": "1.5.4" },
   "devDependencies": { "hap-controller": "0.10.2" }
 }

@@ -1,4 +1,4 @@
-// Reserve stdout for the private Windows RPC channel, including library diagnostics.
+// Reserve stdout for the private Bluetooth RPC channel, including library diagnostics.
 console.log = console.error.bind(console);
 const path = require('node:path');
 const { HAPStorage } = require('hap-nodejs');
@@ -35,9 +35,12 @@ async function main() {
   await bridge.publish();
   const qrPath = path.join(directory, 'pairing.png');
   await QRCode.toFile(qrPath, bridge.accessory.setupURI(), { width: 320, margin: 2 });
-  transport.emit({ kind: 'pairing', code: stored.identity.pincode, qrPath });
+  const qrText = await QRCode.toString(bridge.accessory.setupURI(), { type: 'terminal', small: true });
+  await require('node:fs/promises').writeFile(path.join(directory, 'pairing-terminal.txt'), qrText, { mode: 0o600 });
+  transport.emit({ kind: 'pairing', code: stored.identity.pincode, qrPath, qrText });
   transport.emit({ kind: 'ready' });
   heartbeat = setInterval(() => { void engine.refresh(); }, 5000);
   await engine.refresh();
+  transport.emit({ kind: 'status', connected: engine.online });
 }
 main().catch(() => { process.stderr.write('HomeKit: démarrage impossible. Vérifiez le dossier local et le port 51827.\n'); process.exit(1); });

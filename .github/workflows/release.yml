@@ -1,4 +1,4 @@
-name: Publish iOS and Windows release
+name: Publish iOS Windows and Linux release
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
       release_tag:
         description: Release version tag
         required: true
-        default: v0.2.0
+        default: v0.3.0
         type: string
       ios_run_id:
         description: Successful iOS build run for the same app sources
@@ -18,7 +18,57 @@ permissions:
   actions: read
 
 jobs:
+  linux:
+    name: Linux ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.19.0'
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.11'
+      - name: Test Linux transport and encrypted HomeKit on native architecture
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -r linux/requirements.txt
+          npm ci --prefix homekit --ignore-scripts --no-audit --no-fund
+          PYTHONPATH=linux .venv/bin/python -m unittest discover -s linux/tests -v
+          npm test --prefix homekit
+      - name: Build portable Linux bundle with verified Node runtime
+        run: python scripts/package-linux.py --arch ${{ matrix.arch }} --output release/LanternDirect-Linux-${{ matrix.arch }}.tar.gz
+      - name: Install and check the packaged command line
+        run: |
+          mkdir smoke
+          tar -xzf release/LanternDirect-Linux-${{ matrix.arch }}.tar.gz -C smoke
+          cd smoke/LanternDirect-Linux-${{ matrix.arch }}
+          ./install.sh
+          ./lantern --help
+          runtime/bin/node --version
+          .venv/bin/python -c 'import bleak, dbus_fast'
+          ./lantern service --device AA:BB:CC:DD:EE:FF > /tmp/lantern-direct.service
+          systemd-analyze verify /tmp/lantern-direct.service
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: LanternDirect-Linux-${{ matrix.arch }}
+          path: release/LanternDirect-Linux-${{ matrix.arch }}.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
   release:
+    needs: linux
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -50,6 +100,12 @@ jobs:
 
       - name: Package Windows HomeKit bridge with verified Node runtime
         run: python3 scripts/package-homekit.py --exe release/windows/LanternDirect.exe --output release/LanternDirect-Windows-HomeKit.zip
+
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          pattern: LanternDirect-Linux-*
+          merge-multiple: true
+          path: release
 
       - name: Fetch the validated iOS build
         run: |
@@ -84,8 +140,9 @@ jobs:
           cp INSTALLER-SUR-IPHONE.txt release/
           git archive --format=zip HEAD ios .github/workflows/ios-build.yml > release/LanternDirect-iOS-sources.zip
           git archive --format=zip HEAD windows windows-tests homekit scripts/package-homekit.py MAISON-WINDOWS.txt ios/PROTOCOL.md > release/LanternDirect-Windows-sources.zip
+          git archive --format=zip HEAD lantern linux homekit scripts/package-linux.py ios/PROTOCOL.md > release/LanternDirect-Linux-sources.zip
           cd release
-          sha256sum LanternDirect-Windows-HomeKit.zip LanternDirect-unsigned.ipa LanternDirect.exe LanternDirect-iOS-sources.zip LanternDirect-Windows-sources.zip INSTALLER-SUR-IPHONE.txt > SHA256SUMS.txt
+          sha256sum LanternDirect-Linux-arm64.tar.gz LanternDirect-Linux-x64.tar.gz LanternDirect-Linux-sources.zip LanternDirect-Windows-HomeKit.zip LanternDirect-unsigned.ipa LanternDirect.exe LanternDirect-iOS-sources.zip LanternDirect-Windows-sources.zip INSTALLER-SUR-IPHONE.txt > SHA256SUMS.txt
 
       - name: Upload assets to draft and publish
         run: |
@@ -96,16 +153,17 @@ jobs:
           PY
           else
             gh release create "$RELEASE_TAG" --draft --prerelease --target "$GITHUB_SHA" \
-              --title "Lantern Direct $RELEASE_TAG — Maison, iOS et Windows" --notes-file .github/release-notes.md
+              --title "Lantern Direct $RELEASE_TAG — Linux, Raspberry Pi et Maison" --notes-file .github/release-notes.md
           fi
           gh release upload "$RELEASE_TAG" \
+            release/LanternDirect-Linux-arm64.tar.gz release/LanternDirect-Linux-x64.tar.gz release/LanternDirect-Linux-sources.zip \
             release/LanternDirect-Windows-HomeKit.zip release/LanternDirect-unsigned.ipa release/LanternDirect.exe \
             release/LanternDirect-iOS-sources.zip release/LanternDirect-Windows-sources.zip \
             release/INSTALLER-SUR-IPHONE.txt release/SHA256SUMS.txt --clobber
           gh release view "$RELEASE_TAG" --json assets > release/assets.json
           python3 - <<'PY'
           import json
-          expected = {'LanternDirect-Windows-HomeKit.zip', 'LanternDirect-unsigned.ipa', 'LanternDirect.exe',
+          expected = {'LanternDirect-Linux-arm64.tar.gz', 'LanternDirect-Linux-x64.tar.gz', 'LanternDirect-Linux-sources.zip', 'LanternDirect-Windows-HomeKit.zip', 'LanternDirect-unsigned.ipa', 'LanternDirect.exe',
                       'LanternDirect-iOS-sources.zip', 'LanternDirect-Windows-sources.zip',
                       'INSTALLER-SUR-IPHONE.txt', 'SHA256SUMS.txt'}
           assets = json.load(open('release/assets.json'))['assets']
@@ -113,4 +171,4 @@ jobs:
           assert all(asset['state'] == 'uploaded' and asset['size'] > 0 for asset in assets)
           PY
           gh release edit "$RELEASE_TAG" --draft=false --prerelease \
-            --title "Lantern Direct $RELEASE_TAG — Maison, iOS et Windows" --notes-file .github/release-notes.md
+            --title "Lantern Direct $RELEASE_TAG — Linux, Raspberry Pi et Maison" --notes-file .github/release-notes.md

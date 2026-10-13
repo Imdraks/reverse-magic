@@ -25,7 +25,7 @@ class PipeTransport {
   emit(message) { this.output.write(JSON.stringify(message) + '\n'); }
 
   request(op, state) {
-    if (this.closed) return Promise.reject(new Error('Windows controller stopped'));
+    if (this.closed) return Promise.reject(new Error('Bluetooth controller stopped'));
     const id = this.nextID++;
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -44,7 +44,7 @@ class PipeTransport {
   close() {
     if (this.closed) return;
     this.closed = true;
-    for (const { reject, timer } of this.pending.values()) { clearTimeout(timer); reject(new Error('Windows controller stopped')); }
+    for (const { reject, timer } of this.pending.values()) { clearTimeout(timer); reject(new Error('Bluetooth controller stopped')); }
     this.pending.clear();
     this.lines.close();
   }

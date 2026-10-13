@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+LANTERN_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+if [[ ! -x "$LANTERN_ROOT/.venv/bin/python" ]]; then
+  echo 'Lancez ./install.sh une première fois pour créer l’environnement Python.' >&2
+  exit 1
+fi
+exec "$LANTERN_ROOT/.venv/bin/python" "$LANTERN_ROOT/linux/lantern.py" "$@"
