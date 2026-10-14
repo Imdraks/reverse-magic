@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'">
+<title>Lantern Direct</title><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css"><script src="app.js" defer></script>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="brand"><img src="icon.svg" alt="" width="40" height="40"><div>Lantern<span>DIRECT</span></div></div>
+  <div class="nav-caption">VOTRE ESPACE</div>
+  <nav aria-label="Navigation principale">
+    <button class="nav-item active" data-page="overview"><span data-icon="grid"></span>Vue d’ensemble</button>
+    <button class="nav-item" data-page="ambience"><span data-icon="spark"></span>Ambiances</button>
+    <button class="nav-item" data-page="home"><span data-icon="home"></span>Maison<span class="nav-dot" id="home-dot"></span></button>
+    <button class="nav-item" data-page="devices"><span data-icon="bluetooth"></span>Appareils</button>
+  </nav>
+  <div class="sidebar-bottom"><div class="local-note"><span data-icon="shield"></span><div>Simplement local.<small>Votre lumière, chez vous.</small></div></div><button class="text-button" id="quit">Quitter Lantern<span data-icon="exit"></span></button></div>
+</aside>
+<main>
+<header class="topbar"><div class="breadcrumb">Mon espace <span>/</span> <span id="breadcrumb">Vue d’ensemble</span></div><div class="header-actions"><button class="icon-button" id="quit-top" aria-label="Quitter Lantern"><span data-icon="exit"></span></button><button class="icon-button" id="theme" aria-label="Changer d’apparence"><span data-icon="moon"></span></button></div></header>
+<div class="content">
+  <div class="page-heading"><div><p class="eyebrow">LANTERN DIRECT</p><h1 id="page-title">La lumière, simplement.</h1><p class="subtitle" id="page-subtitle">Un peu de couleur. Une autre atmosphère.</p></div><button class="connection-pill" id="connection-pill"><i></i><span id="connection-text">Non connecté</span><span data-icon="chevron"></span></button></div>
+  <section class="page active" id="page-overview" aria-label="Vue d’ensemble">
+    <article class="hero card">
+      <div class="hero-copy"><div class="tiny-label">VOTRE ÉCLAIRAGE</div><h2 id="light-name">Lumière principale</h2><p id="light-description">Connectez votre ruban et composez votre ambiance.</p><div class="hero-bottom"><button class="power-toggle manual" id="power" role="switch" aria-checked="false" aria-label="Allumer la lumière"><span></span></button><div><strong id="power-label">Éteinte</strong><small id="brightness-summary">Prête à s’illuminer</small></div></div></div>
+      <div class="lamp-scene" aria-hidden="true"><div class="lamp-halo"></div><svg class="lamp" viewBox="0 0 220 220"><path class="lamp-glass" d="M68 95c0-59 84-59 84 0 0 28-20 34-20 57H88c0-23-20-29-20-57Z"/><path d="M91 164h38M94 175h32M102 186h16"/><path class="lamp-filament" d="m99 124 11-17 11 17M110 107V90"/></svg><span class="scene-ring ring-one"></span><span class="scene-ring ring-two"></span></div>
+    </article>
+    <p class="mode-notice" id="mode-notice" hidden>Maison pilote actuellement votre lumière. Arrêtez le pont pour utiliser les commandes directes.</p>
+    <div class="two-columns">
+      <article class="card control-card"><div class="card-heading"><span class="icon-tile amber" data-icon="sun"></span><div><h3>Luminosité</h3><p>Juste ce qu’il faut.</p></div><strong class="large-value" id="brightness-value">100<span>%</span></strong></div><div class="range-row"><span data-icon="sun"></span><input class="manual" id="brightness" type="range" min="0" max="100" value="100" aria-label="Luminosité"><span data-icon="sun"></span></div><div class="range-captions"><span>Tamisée</span><span>Éclatante</span></div></article>
+      <article class="card control-card"><div class="card-heading"><span class="icon-tile violet" data-icon="palette"></span><div><h3>Couleur</h3><p>Donnez le ton.</p></div><label class="custom-color" title="Choisir une couleur"><input class="manual" id="custom-color" type="color" value="#ffb340" aria-label="Couleur personnalisée"><span data-icon="plus"></span></label></div><div class="swatches" id="swatches"></div><p class="color-caption" id="color-caption">Ambre doux</p></article>
+    </div>
+    <div class="section-title"><div><h2>Un instant pour vous.</h2><p>Des teintes pour chaque moment.</p></div><button class="text-button" data-open="ambience">Tout explorer<span data-icon="chevron"></span></button></div>
+    <div class="ambient-grid" id="quick-ambiences"></div>
+    <button class="home-banner" data-open="home"><span class="icon-tile dark" data-icon="home"></span><div><strong>Une place dans Maison.</strong><span>Vos lumières, à portée de voix avec Siri.</span></div><span data-icon="chevron"></span></button>
+  </section>
+  <section class="page" id="page-ambience" aria-label="Ambiances">
+    <div class="ambient-grid large" id="all-ambiences"></div>
+    <article class="card settings-card"><div class="card-heading"><span class="icon-tile violet" data-icon="spark"></span><div><h3>Animations du ruban</h3><p>Un peu plus de mouvement.</p></div></div><div class="form-row"><label class="field">Animation<select class="manual" id="effect"></select></label><button class="primary manual" id="play-effect"><span data-icon="play"></span>Lancer</button></div><label class="slider-field">Vitesse <output id="speed-value">50 %</output><input class="manual" id="speed" type="range" min="0" max="100" value="50"></label><p class="footnote">Les animations disponibles varient selon votre ruban.</p></article>
+    <article class="card settings-card"><div class="card-heading"><span class="icon-tile pink" data-icon="music"></span><div><h3>Au rythme de la musique.</h3><p>Avec le microphone de votre contrôleur, s’il est équipé.</p></div><button class="power-toggle manual" id="mic" role="switch" aria-checked="false" aria-label="Activer le microphone"><span></span></button></div><div class="form-row"><label class="field">Style musical<select class="manual" id="mic-effect"><option value="0">Énergie</option><option value="1">Rythme</option><option value="2">Spectre</option><option value="3">Défilement</option><option value="4">Énergie 2</option><option value="5">Rythme 2</option><option value="6">Spectre 2</option><option value="7">Défilement 2</option></select></label></div><label class="slider-field">Sensibilité <output id="sensitivity-value">50 %</output><input class="manual" id="sensitivity" type="range" min="0" max="100" value="50"></label></article>
+  </section>
+  <section class="page" id="page-home" aria-label="Maison">
+    <article class="card home-feature"><div class="home-symbol" data-icon="home"></div><p class="eyebrow">TOUT SE RETROUVE DANS MAISON</p><h2>« Dis Siri,<br>allume la lumière. »</h2><p>Ajoutez votre éclairage à Maison et retrouvez<br>vos couleurs, votre luminosité et vos habitudes.</p><span class="status-tag" id="home-status">Pont désactivé</span><div class="center-actions"><button class="primary" id="bridge-toggle">Activer le pont</button><button class="secondary" id="pairing" disabled>Afficher le code</button></div></article>
+    <article class="card settings-card"><h3>Prêt, même demain.</h3><p id="home-explanation">Gardez cet appareil allumé et à portée de vos LED pour utiliser Maison.</p><label class="setting-line" id="autostart-row"><span>Ouvrir le pont avec Windows<small>À l’ouverture de votre session.</small></span><input id="autostart" type="checkbox" role="switch"></label><div id="linux-service" hidden><p>Pour un pont actif dès le démarrage, utilisez le service Raspberry Pi / Linux :</p><code id="service-command">./lantern service --device ADRESSE_LED --install</code></div><p class="footnote">L’iPhone et cet appareil doivent être sur le même réseau local. Les effets et la musique se règlent dans Lantern lorsque le pont est arrêté.</p></article>
+  </section>
+  <section class="page" id="page-devices" aria-label="Appareils">
+    <article class="card settings-card"><div class="card-heading"><span class="icon-tile blue" data-icon="bluetooth"></span><div><h3>À proximité</h3><p>Votre prochaine ambiance commence ici.</p></div><button class="primary" id="scan"><span data-icon="search"></span>Rechercher</button></div><label class="checkbox-line"><input id="show-all" type="checkbox">Afficher tous les appareils Bluetooth</label><div id="device-list" class="device-list"><div class="empty-state"><span data-icon="bluetooth"></span><h3>Faisons connaissance.</h3><p>Allumez vos LED, rapprochez-vous et lancez une recherche.</p></div></div></article>
+    <article class="card settings-card"><h3>Votre connexion</h3><p id="device-detail">Aucun contrôleur sélectionné.</p><div class="form-row"><button class="secondary" id="reconnect">Reconnecter</button><button class="text-button danger" id="disconnect">Déconnecter</button></div><p class="footnote">Fermez les autres apps Bluetooth ou le pont d’un autre appareil pour libérer la connexion.</p></article>
+  </section>
+  <footer><span class="footer-dot"></span><span id="status-text" role="status">Un éclairage personnel. Sans compte, sans cloud.</span><span class="footer-brand">Conçu pour votre quotidien.</span></footer>
+</div>
+</main>
+<dialog id="pairing-dialog"><button class="dialog-close icon-button" id="close-pairing" aria-label="Fermer"><span data-icon="close"></span></button><div class="icon-tile amber" data-icon="home"></div><h2>Bienvenue dans Maison.</h2><p>Maison → + → Ajouter un accessoire.<br>Scannez ce code avec votre iPhone.</p><img id="pairing-image" alt="QR code d’appairage Maison" width="240" height="240"><strong class="pairing-code" id="pairing-code"></strong><p class="footnote">Acceptez l’accessoire non certifié si Maison le demande.</p></dialog>
+<div class="toast" id="toast" role="alert" hidden></div>
+</body></html>

@@ -6,9 +6,10 @@ import sys
 from protocol import light_frames
 
 class Bridge:
-    def __init__(self, controller, node, server, data_dir, device_id, show_code=False):
+    def __init__(self, controller, node, server, data_dir, device_id, show_code=False, on_event=None, close_controller=True):
         self.controller, self.node, self.server = controller, node, server
         self.data_dir, self.device_id, self.show_code = data_dir, device_id, show_code
+        self.on_event, self.close_controller = on_event, close_controller
         self.requests = {}
         self.output_lock = asyncio.Lock()
         self.process = None
@@ -42,6 +43,7 @@ class Bridge:
             while line := await self.process.stdout.readline():
                 message = json.loads(line)
                 kind = message.get('kind')
+                if self.on_event: self.on_event(message)
                 if kind == 'request':
                     if len(self.requests) >= 32 or message['id'] in self.requests:
                         raise RuntimeError('Trop de requêtes Bluetooth en attente.')
@@ -69,7 +71,7 @@ class Bridge:
                 except TimeoutError:
                     self.process.kill(); await self.process.wait()
             await diagnostics
-            await self.controller.close()
+            if self.close_controller: await self.controller.close()
 
     async def diagnostics(self):
         # Node sends only diagnostics to stderr. Pairing credentials stay on stdout.

@@ -5,7 +5,7 @@ function createAccessory(engine, { deviceId, name = 'Mes LED', username, pincode
     .setCharacteristic(Characteristic.Manufacturer, 'Lantern Direct')
     .setCharacteristic(Characteristic.Model, 'Magic Lantern Bluetooth')
     .setCharacteristic(Characteristic.SerialNumber, deviceId)
-    .setCharacteristic(Characteristic.FirmwareRevision, '0.3.0');
+    .setCharacteristic(Characteristic.FirmwareRevision, '0.4.0');
   const light = accessory.addService(Service.Lightbulb, name);
   const mapping = { on: Characteristic.On, brightness: Characteristic.Brightness, hue: Characteristic.Hue, saturation: Characteristic.Saturation };
   for (const [key, type] of Object.entries(mapping)) {

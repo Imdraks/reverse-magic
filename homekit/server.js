@@ -30,6 +30,7 @@ async function main() {
   };
   process.stdin.on('close', shutdown);
   process.on('SIGINT', shutdown); process.on('SIGTERM', shutdown);
+  engine.on('state', state => transport.emit({ kind: 'light', state }));
   engine.on('availability', connected => transport.emit({ kind: 'status', connected }));
   engine.on('persistence-warning', () => transport.emit({ kind: 'warning', message: 'État appliqué, mais impossible de l’enregistrer.' }));
   await bridge.publish();

@@ -10,14 +10,14 @@ Aucune installation de Node.js ou de .NET nécessaire.
    autres applications Bluetooth sur les téléphones : une connexion à la fois.
 3. Lancer LanternDirect.exe, rechercher les LED et connecter le contrôleur.
    Vérifier rouge, vert et bleu avec les commandes Windows.
-4. Cliquer sur « Activer Maison ». À la première activation, les LED sont
+4. Dans la section Maison, cliquer sur « Activer le pont ». À la première activation, les LED sont
    éteintes pour partir d'un état connu. Les réglages Maison sont ensuite
    conservés et réappliqués après une reconnexion Bluetooth.
 5. Autoriser node.exe dans le pare-feu Windows pour les réseaux PRIVÉS.
    PC et iPhone doivent être sur le même réseau local, sans isolation des
    clients Wi-Fi. HomeKit utilise TCP 51827 et la découverte mDNS UDP 5353.
    Aucune redirection de port Internet n'est nécessaire.
-6. Cliquer « Code d’appairage ». Sur l’iPhone : Maison → + → Ajouter un
+6. Cliquer « Afficher le code ». Sur l’iPhone : Maison → + → Ajouter un
    accessoire, puis scanner le QR code affiché. Accepter l’accessoire non
    certifié si Maison le demande. Si la caméra échoue, utiliser le code
    numérique avec « Plus d’options » / « Mon accessoire n’est pas affiché ici ».
@@ -55,3 +55,9 @@ VERSION DE TEST : compilation Windows et tests HomeKit chiffrés réussis.
 La liaison Windows Bluetooth → LED → Maison doit être confirmée sur vos appareils.
 L’exécutable est non signé ; n’accepter Windows SmartScreen que si le fichier
 provient de la release officielle Imdraks/reverse-magic et correspond au SHA-256.
+
+NOUVELLE INTERFACE : l’affichage utilise Microsoft Edge WebView2 Runtime,
+généralement présent sur Windows 11. S’il manque, les commandes classiques
+restent disponibles ; installer le runtime depuis le site Microsoft.
+Les ambiances du tableau de bord sont des teintes fixes ; les animations
+du contrôleur sont accessibles séparément dans la section Ambiances.

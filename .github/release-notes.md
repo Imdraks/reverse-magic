@@ -1,15 +1,15 @@
-Cette version ajoute un **pont Maison pour Linux et Raspberry Pi**, utilisable entièrement depuis le terminal ou SSH, avec démarrage automatique au boot.
+Une nouvelle interface commune à **Windows et Linux/Raspberry Pi**, inspirée des applications Apple : fond doux, cartes arrondies, palette pastel, hiérarchie simple et modes clair/sombre.
 
-- **Raspberry Pi OS 64 bits** (Pi 3/4/5 et Zero 2 W) : télécharger `LanternDirect-Linux-arm64.tar.gz`.
-- **PC Linux x64** (Debian 12/13, Ubuntu 24.04+) : télécharger `LanternDirect-Linux-x64.tar.gz`.
-- Extraire l’archive, installer Python 3.11+/venv et BlueZ, puis lancer `./install.sh`, `./lantern scan` et `./lantern bridge --device ADRESSE_DES_LED`.
-- Le terminal affiche le QR et le code Maison. `./lantern service --device ADRESSE_DES_LED --install` active le service systemd sous votre compte, sans session SSH ouverte. Les codes d’appairage restent hors des journaux ; les revoir avec `./lantern pairing --device ADRESSE_DES_LED`.
-- Commandes directes : on/off, couleur, luminosité, effets et micro du contrôleur. La correction rouge/vert GRB est conservée.
+- Tableau de bord avec lumière principale, bouton d’allumage, luminosité et palette de couleurs.
+- Ambiances de couleurs prêtes à appliquer ; animations et musique du contrôleur dans leur propre section.
+- Espace Maison pour activer/arrêter le pont, afficher le QR et le code d’appairage.
+- Recherche et connexion des appareils Bluetooth, avec état et messages de connexion.
+- Commandes directes désactivées quand Maison pilote les LED ; retour au contrôle manuel après arrêt du pont.
 
-Le runtime Node.js officiel et les dépendances HomeKit sont fournis ; Internet est nécessaire pour installer les dépendances Python la première fois. Le fonctionnement est ensuite local. Un OS **64 bits** est nécessaire pour les archives fournies ; le Pi Zero de première génération n’est pas pris en charge.
+**Windows** : ouvrir `LanternDirect.exe`, ou le programme dans `LanternDirect-Windows-HomeKit.zip` pour Maison. La nouvelle fenêtre utilise Microsoft Edge WebView2 Runtime, généralement installé sur Windows 11. Si ce runtime manque, les commandes classiques restent accessibles. Le runtime est disponible chez Microsoft ; il n’est pas inclus dans le paquet.
 
-**Le Pi doit rester alimenté, sur le même réseau local que l’iPhone et à portée Bluetooth.** Maison expose allumage, couleur et luminosité sans nécessiter l’app iOS Lantern Direct. Les effets et la musique restent dans le client terminal. La première synchronisation éteint les LED ; les suivantes restaurent la dernière consigne. Arrêter le pont avant le contrôle Bluetooth direct.
+**Linux / Raspberry Pi OS 64 bits** : télécharger l’archive ARM64 ou x64, installer comme indiqué dans [le guide](https://github.com/Imdraks/reverse-magic/blob/main/linux/README.md), puis lancer **`./lantern gui`**. L’interface s’ouvre dans le navigateur de l’appareil, avec accès uniquement local et commandes authentifiées. Un bureau/navigateur est nécessaire pour le GUI ; le terminal, le pont sans écran et le service systemd restent disponibles. Arrêter le service avant de connecter ses LED dans le GUI.
 
-Guide : [Linux / Raspberry Pi](https://github.com/Imdraks/reverse-magic/blob/main/linux/README.md). La release contient aussi les clients Windows, le ZIP Windows HomeKit complet et l’IPA iOS 1.0.1 inchangé, non signé et nécessitant une signature locale. Sources et SHA-256 inclus.
+Le pont Maison, les identités d’appairage et la correction rouge/vert GRB sont conservés. Le PC/Pi doit rester allumé et à portée Bluetooth. L’IPA iOS 1.0.1 est inchangé et reste non signé.
 
-Validation : tests Linux des trames, écritures sérialisées, annulation, reconnexion, service et processus HomeKit réel avec un client chiffré indépendant ; tests HomeKit existants et 38 vérifications Windows. Les paquets sont installés et vérifiés sur les runners Linux natifs x64 et ARM64. Le transport BLE des tests est simulé ; l’essai final avec le Raspberry Pi, vos LED et Maison reste nécessaire. Accessoire HomeKit non certifié.
+Aperçus clair et sombre joints à la release, avec un contrôleur simulé. Tests Chromium : connexion, commandes jusqu’aux trames GRB, luminosité, Maison, QR, retour au contrôle manuel, écran étroit et accès HTTP refusé sans session/depuis une autre origine. Tests Linux et HomeKit chiffré, validation native ARM64/x64 et compilation Windows. Le rendu WebView2 Windows et l’essai radio réel avec vos appareils restent à confirmer.

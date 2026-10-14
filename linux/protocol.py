@@ -28,6 +28,7 @@ def effect(code, scene=False):
     return bytes([0x7e, 5, 0x31 if scene else 3, integer(code), 7 if scene else 6, 0xff, 0xff, int(scene), 0xef])
 
 def microphone(on):
+    if type(on) is not bool: raise ValueError('État du microphone invalide.')
     return bytes([0x7e, 4, 7, int(bool(on)), 0xff, 0xff, 0xff, 0, 0xef])
 
 def mic_effect(code):

@@ -1,0 +1,76 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const { spawn } = require('node:child_process');
+const { once } = require('node:events');
+const path = require('node:path');
+const fs = require('node:fs/promises');
+const readline = require('node:readline');
+const { chromium } = require('playwright-core');
+const root=path.resolve(__dirname,'../..');
+
+test('desktop UI: authenticated API, devices, GRB colour, Maison pairing and adaptive layout', {timeout:60000},async()=>{
+  const child=spawn(process.env.LANTERN_TEST_PYTHON||path.join(root,'.venv/bin/python'),['-u',path.join(root,'linux/tests/gui_fixture.py')],{cwd:root,stdio:['ignore','pipe','pipe']});
+  const exit=once(child,'exit');let errors='';child.stderr.on('data',data=>errors+=data);
+  const lines=readline.createInterface({input:child.stdout});
+  let browser;
+  try{
+    const [line]=await once(lines,'line');const {origin,token}=JSON.parse(line);
+    const api=async(action,data={})=>{
+      const response=await fetch(origin+'/api/'+action,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(data)});
+      const result=await response.json();assert.ok(result.ok,result.error);return result.result;
+    };
+    assert.equal((await fetch(origin+'/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status,403);
+    assert.equal((await fetch(origin+'/api/state',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'Origin':'https://untrusted.example'},body:'{}'})).status,403);
+    const wrongHost=await new Promise((resolve,reject)=>{const req=require('node:http').request(origin+'/api/state',{method:'POST',headers:{'Host':'untrusted.example','Content-Type':'application/json','Content-Length':2,'Authorization':'Bearer '+token}},response=>{response.resume();resolve(response.statusCode);});req.on('error',reject);req.end('{}');});
+    assert.equal(wrongHost,403);
+    assert.equal((await fetch(origin+'/../linux/requirements.txt')).status,404);
+    browser=await chromium.launch({executablePath:process.env.LANTERN_CHROMIUM||'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
+    const page=await browser.newPage({viewport:{width:1320,height:1020},deviceScaleFactor:1});
+    const pageErrors=[];page.on('pageerror',error=>pageErrors.push(error.message));
+    await page.goto(origin+'/#key='+token);await page.getByRole('heading',{name:'La lumière, simplement.'}).waitFor();
+    await page.getByRole('button',{name:'Appareils',exact:true}).click();
+    await page.getByRole('button',{name:'Rechercher',exact:true}).click();
+    await page.getByRole('button',{name:'Connecter',exact:true}).click();
+    await page.getByRole('button',{name:'Connecté',exact:true}).waitFor();
+    await page.getByRole('button',{name:'Vue d’ensemble',exact:true}).click();
+    await page.getByRole('button',{name:'Corail',exact:true}).click();
+    await page.waitForFunction(()=>document.getElementById('power').getAttribute('aria-checked')==='true');
+    const frames=await api('test-frames');assert.ok(frames.includes('7e07050376ff5e10ef'),'GUI colour must use GRB');
+    await page.locator('#brightness').fill('42');await page.locator('#brightness').dispatchEvent('change');
+    await page.waitForFunction(()=>document.getElementById('brightness-value').textContent==='42%');
+    await page.getByRole('button',{name:'Maison',exact:true}).click();
+    await page.getByRole('button',{name:'Activer le pont',exact:true}).click();
+    await page.getByRole('button',{name:'Afficher le code',exact:true}).waitFor();
+    await page.waitForFunction(()=>!document.getElementById('pairing').disabled);
+    await page.getByRole('button',{name:'Afficher le code',exact:true}).click();
+    await page.locator('#pairing-dialog[open]').waitFor();
+    assert.match(await page.locator('#pairing-code').textContent(),/^\d{3}-\d{2}-\d{3}$/);
+    await page.getByRole('button',{name:'Fermer',exact:true}).click();
+    await page.getByRole('button',{name:'Vue d’ensemble',exact:true}).click();assert.ok(await page.locator('#power').isDisabled());
+    await page.waitForFunction(()=>document.getElementById('power').getAttribute('aria-checked')==='false');
+    assert.ok((await api('test-frames')).includes('7e0404000000ff00ef'),'HomeKit initial synchronization must reach the controller');
+    await page.getByRole('button',{name:'Maison',exact:true}).click();await page.getByRole('button',{name:'Arrêter le pont',exact:true}).click();
+    await page.waitForFunction(()=>document.getElementById('bridge-toggle').textContent==='Activer le pont');
+    await page.getByRole('button',{name:'Vue d’ensemble',exact:true}).click();
+    await page.getByRole('button',{name:'Corail',exact:true}).click();
+    await page.waitForFunction(()=>document.getElementById('power').getAttribute('aria-checked')==='true');
+    await page.locator('#brightness').fill('42');await page.locator('#brightness').dispatchEvent('change');
+    await page.waitForFunction(()=>document.getElementById('brightness-value').textContent==='42%');
+    await page.mouse.move(1300,10);
+    await page.locator('#toast').evaluate(el=>el.hidden=true);
+    await fs.mkdir(path.join(root,'../outputs/interface'),{recursive:true});
+    await page.screenshot({path:path.join(root,'../outputs/interface/lantern-light.png'),fullPage:true,animations:'disabled'});
+    await page.getByRole('button',{name:'Changer d’apparence'}).click();
+    const dark=await page.evaluate(()=>({background:getComputedStyle(document.documentElement).backgroundColor,color:getComputedStyle(document.documentElement).color}));
+    assert.equal(dark.background,'rgb(28, 28, 31)');assert.equal(dark.color,'rgb(239, 239, 242)');
+    await page.screenshot({path:path.join(root,'../outputs/interface/lantern-dark.png'),fullPage:true,animations:'disabled'});
+    await page.setViewportSize({width:390,height:844});
+    const overflow=await page.evaluate(()=>({width:window.innerWidth,scroll:document.documentElement.scrollWidth,elements:[...document.querySelectorAll('body *')].filter(el=>el.getBoundingClientRect().width>0&&el.getBoundingClientRect().right>window.innerWidth+1).map(el=>el.id||el.className).slice(0,8)}));
+    assert.ok(overflow.scroll<=overflow.width,'small screen must not overflow: '+JSON.stringify(overflow));
+    await page.screenshot({path:path.join(root,'../outputs/interface/lantern-mobile.png'),fullPage:true,animations:'disabled'});
+    assert.deepEqual(pageErrors,[]);
+  }finally{
+    if(browser)await browser.close();lines.close();child.kill('SIGTERM');await exit;
+    assert.equal(errors,'');
+  }
+});

@@ -23,7 +23,7 @@ public sealed partial class MainForm : Form
     private readonly System.Windows.Forms.Timer scanTimer = new() { Interval = 12000 };
     private readonly string preferencesPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LanternDirect", "last-device.json");
     private readonly List<Effect> catalog;
-    private Color selectedColor = Color.OrangeRed;
+    private Color selectedColor = Color.FromArgb(255,179,64);
     private FoundLED? lastDevice;
     private bool controllerMic;
     private bool busy;
@@ -138,6 +138,7 @@ public sealed partial class MainForm : Form
         });
         scanTimer.Tick += (_, _) => { StopScan(); status.Text = found.Count == 0 ? "Aucune LED trouvée. Rapprochez-vous et fermez l’app Android." : "Choisissez votre contrôleur."; };
         FormClosed += (_, _) => { StopHomeKit(); scanTimer.Dispose(); ble.Dispose(); };
+        InitializeDesktop(page);
     }
 
     private async Task Connect(FoundLED selected)

@@ -35,7 +35,9 @@ public sealed partial class MainForm
         Shown += async (_, _) =>
         {
             if (!atStartup) return;
+            busy = true;
             try { await StartHomeKit(); Hide(); } catch (Exception e) { homeStatus.Text = e.Message; }
+            finally { busy = false; }
         };
     }
     private async Task StartHomeKit()
@@ -54,6 +56,13 @@ public sealed partial class MainForm
                 case "pairing": pairingCode = message.GetProperty("code").GetString(); pairingQR = message.GetProperty("qrPath").GetString(); break;
                 case "ready": homeStatus.Text = "Maison : prêt. Ajoutez un accessoire avec le code d’appairage."; break;
                 case "status": homeStatus.Text = message.GetProperty("connected").GetBoolean() ? "Maison : LED connectées." : "Maison : LED indisponibles, reconnexion automatique…"; break;
+                case "light":
+                    var light = message.GetProperty("state");
+                    desktopOn = light.GetProperty("on").GetBoolean();
+                    brightness.Value = light.GetProperty("brightness").GetInt32();
+                    var snapshot = new HomeKitLightState(true, brightness.Value, light.GetProperty("hue").GetDouble(), light.GetProperty("saturation").GetDouble()).Frames()[1];
+                    selectedColor = Color.FromArgb(snapshot[5], snapshot[4], snapshot[6]);
+                    PushDesktop(); break;
                 case "warning": homeStatus.Text = message.GetProperty("message").GetString(); break;
             }
         });

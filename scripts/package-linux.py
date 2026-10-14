@@ -48,6 +48,8 @@ def main():
         for source in (ROOT / 'linux').glob('*.py'): shutil.copy2(source, bundle / 'linux' / source.name)
         for name in ['requirements.txt','README.md']: shutil.copy2(ROOT / 'linux' / name, bundle / 'linux' / name)
         shutil.copy2(ROOT / 'linux/README.md', bundle / 'LIRE-MOI.md')
+        shutil.copy2(ROOT / 'windows/effects.json', bundle / 'linux/effects.json')
+        shutil.copytree(ROOT / 'ui', bundle / 'ui', ignore=shutil.ignore_patterns('node_modules','test','package*.json','.gitignore'))
         (bundle / 'homekit').mkdir()
         for source in (ROOT / 'homekit').glob('*.js'): shutil.copy2(source, bundle / 'homekit' / source.name)
         for name in ['package.json', 'package-lock.json']: shutil.copy2(ROOT / 'homekit' / name, bundle / 'homekit' / name)

@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>LanternDirect</AssemblyName>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
@@ -16,5 +16,10 @@
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="effects.json" />
+    <EmbeddedResource Include="../ui/index.html;../ui/style.css;../ui/app.js;../ui/icon.svg" LogicalName="LanternDirect.ui.%(Filename)%(Extension)" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4258.31" />
   </ItemGroup>
+  <Target Name="ExcludeUnusedWebViewWpf" BeforeTargets="ResolveAssemblyReferences">
+    <ItemGroup><Reference Remove="@(Reference)" Condition="'%(Reference.Filename)' == 'Microsoft.Web.WebView2.Wpf'" /></ItemGroup>
+  </Target>
 </Project>

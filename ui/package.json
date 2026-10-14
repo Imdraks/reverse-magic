@@ -1,0 +1,1 @@
+{"name":"lantern-interface-checks","private":true,"scripts":{"test":"node --test test/*.test.js"},"devDependencies":{"playwright-core":"1.64.0"}}

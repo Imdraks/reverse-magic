@@ -39,3 +39,11 @@ Extraire le ZIP Windows HomeKit complet, garder `node.exe` et `homekit/` à côt
 Le programme reste actif près de l’horloge lorsque sa fenêtre est fermée. Le démarrage automatique utilise uniquement la clé Run de l’utilisateur courant et peut être décoché. Le PC doit rester allumé et dans une session ouverte, sans veille ; le pont n’est pas un service Windows. L’appairage et les consignes sont stockés sous `%LOCALAPPDATA%/LanternDirect/homekit/`. La première synchronisation éteint les LED ; les suivantes restaurent la dernière consigne Maison.
 
 Les commandes manuelles sont désactivées pendant le fonctionnement du pont pour préserver la cohérence des consignes Maison. Arrêter Maison pour utiliser les effets ou un client Bluetooth direct. HomeKit utilise un processus Node possédé par l’app Windows et un canal privé stdin/stdout ; aucune API Bluetooth HTTP non authentifiée n’est publiée. La détection de disponibilité et les commandes expirent en cas de perte du contrôleur.
+
+## Nouvelle interface v0.4.0
+
+La fenêtre embarque la même interface que Linux : vue d’ensemble, couleurs, ambiances, Maison et appareils, avec apparence claire ou sombre. Les commandes utilisent toujours le contrôleur BLE Windows natif et le pont existant. Les fichiers HTML/CSS/JS sont intégrés dans l’EXE et extraits dans le profil utilisateur ; aucun site externe ou connexion Internet n’est nécessaire pour l’interface.
+
+L’affichage moderne nécessite **Microsoft Edge WebView2 Runtime**, généralement déjà présent sur Windows 11. S’il manque, le programme conserve les commandes classiques et vous invite à l’installer depuis [Microsoft](https://developer.microsoft.com/microsoft-edge/webview2/). Le runtime WebView2 n’est pas inclus dans le paquet. Le pont Maison nécessite toujours le ZIP Windows complet.
+
+Le rendu partagé a été testé dans Chromium et la compilation Windows x64 est vérifiée. Le fonctionnement de la fenêtre WebView2 et du Bluetooth reste à confirmer sur votre PC Windows.
