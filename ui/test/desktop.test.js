@@ -38,6 +38,15 @@ test('desktop UI: authenticated API, devices, GRB colour, Maison pairing and ada
     const frames=await api('test-frames');assert.ok(frames.includes('7e07050376ff5e10ef'),'GUI colour must use GRB');
     await page.locator('#brightness').fill('42');await page.locator('#brightness').dispatchEvent('change');
     await page.waitForFunction(()=>document.getElementById('brightness-value').textContent==='42%');
+    await page.getByRole('button',{name:'Ambiances',exact:true}).click();
+    await page.locator('#mic').click();
+    await page.waitForFunction(()=>document.getElementById('mic').getAttribute('aria-checked')==='true');
+    assert.ok((await api('test-frames')).includes('7e040701ffffff00ef'));
+    await page.getByRole('button',{name:'Lancer',exact:true}).click();
+    await page.waitForFunction(()=>document.getElementById('mic').getAttribute('aria-checked')==='false');
+    assert.ok((await api('test-frames')).includes('7e05030006ffff00ef'));
+    await page.locator('#mic').click();
+    await page.waitForFunction(()=>document.getElementById('mic').getAttribute('aria-checked')==='true');
     await page.getByRole('button',{name:'Maison',exact:true}).click();
     await page.getByRole('button',{name:'Activer le pont',exact:true}).click();
     await page.getByRole('button',{name:'Afficher le code',exact:true}).waitFor();
@@ -49,6 +58,7 @@ test('desktop UI: authenticated API, devices, GRB colour, Maison pairing and ada
     await page.getByRole('button',{name:'Vue d’ensemble',exact:true}).click();assert.ok(await page.locator('#power').isDisabled());
     await page.waitForFunction(()=>document.getElementById('power').getAttribute('aria-checked')==='false');
     assert.ok((await api('test-frames')).includes('7e0404000000ff00ef'),'HomeKit initial synchronization must reach the controller');
+    assert.equal((await api('state')).mic,false,'Maison must leave music mode and clear its indicator');
     await page.getByRole('button',{name:'Maison',exact:true}).click();await page.getByRole('button',{name:'Arrêter le pont',exact:true}).click();
     await page.waitForFunction(()=>document.getElementById('bridge-toggle').textContent==='Activer le pont');
     await page.getByRole('button',{name:'Vue d’ensemble',exact:true}).click();

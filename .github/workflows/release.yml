@@ -6,7 +6,7 @@ on:
       release_tag:
         description: Release version tag
         required: true
-        default: v0.4.0
+        default: v0.4.1
         type: string
       ios_run_id:
         description: Successful iOS build run for the same app sources

@@ -45,6 +45,7 @@ public sealed partial class MainForm
         if (homeKit != null) return;
         if (lastDevice == null) throw new InvalidOperationException("Connectez une première fois votre contrôleur avant d’activer Maison.");
         if (!ble.IsReady) { try { await Connect(lastDevice); } catch { /* Publish offline and retry from HomeKit status polls. */ } }
+        if (ble.IsReady) await StopMusic();
         var host = new HomeKitHost(lastDevice.Address.ToString("X12"), HandleHomeRequest);
         nextReconnect = DateTime.MinValue;
         homeKit = host; pairingCode = pairingQR = null;

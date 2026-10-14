@@ -4,6 +4,7 @@ Une nouvelle interface commune à **Windows et Linux/Raspberry Pi**, inspirée d
 - Ambiances de couleurs prêtes à appliquer ; animations et musique du contrôleur dans leur propre section.
 - Espace Maison pour activer/arrêter le pont, afficher le QR et le code d’appairage.
 - Recherche et connexion des appareils Bluetooth, avec état et messages de connexion.
+- Le mode musical et son indicateur sont arrêtés lors du passage à Maison.
 - Commandes directes désactivées quand Maison pilote les LED ; retour au contrôle manuel après arrêt du pont.
 
 **Windows** : ouvrir `LanternDirect.exe`, ou le programme dans `LanternDirect-Windows-HomeKit.zip` pour Maison. La nouvelle fenêtre utilise Microsoft Edge WebView2 Runtime, généralement installé sur Windows 11. Si ce runtime manque, les commandes classiques restent accessibles. Le runtime est disponible chez Microsoft ; il n’est pas inclus dans le paquet.

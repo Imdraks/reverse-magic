@@ -83,7 +83,7 @@ class Desktop:
         if event.get('kind')=='pairing': self.pairing_ready=True
         elif event.get('kind')=='status': self.status='Maison est connecté à vos LED.' if event['connected'] else 'Connexion interrompue. Le pont réessaie automatiquement.'
         elif event.get('kind')=='light':
-            state=event['state'];self.on=state['on'];self.brightness=state['brightness']
+            state=event['state'];self.on=state['on'];self.brightness=state['brightness'];self.mic=False
             self.rgb=''.join(f'{round(x*255):02X}' for x in colorsys.hsv_to_rgb(state['hue']/360,state['saturation']/100,1))
         elif event.get('kind')=='warning': self.status=event['message']
 
@@ -114,6 +114,9 @@ class Desktop:
             elif action=='disconnect': await self.disconnect();self.status='Connexion fermée.'
             elif action=='bridge-start':
                 if not self.controller or not self.controller.connected: await self.connect(dict(address=self.device,name=self.device_name))
+                if self.mic:
+                    await self.controller.write([protocol.microphone(False)])
+                    self.mic=False
                 from lantern import node_path
                 self.bridge=Bridge(self.controller,node_path(),ROOT/'homekit/server.js',self.directory(),self.device.replace(':',''),on_event=self.notification,close_controller=False)
                 self.bridge_task=asyncio.create_task(self.bridge.run())

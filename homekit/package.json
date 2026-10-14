@@ -1,6 +1,6 @@
 {
   "name": "lantern-direct-homekit",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "description": "HomeKit IP light accessory backed by the Windows or Linux Bluetooth controller",
   "main": "server.js",
