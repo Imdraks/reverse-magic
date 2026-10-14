@@ -94,11 +94,14 @@ jobs:
           fi
           echo "LANTERN_CHROMIUM=$browser_path" >> "$GITHUB_ENV"
       - name: Check real UI actions and capture light and dark appearance
-        run: npm test --prefix ui
+        run: |
+          npm test --prefix ui
+          mkdir -p build/interface
+          cp ../outputs/interface/*.png build/interface/
       - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: LanternDirect-interface
-          path: ../outputs/interface/*.png
+          path: build/interface/*.png
           if-no-files-found: error
           retention-days: 14
 
