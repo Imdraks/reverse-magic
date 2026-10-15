@@ -18,6 +18,7 @@ from bluetooth import Controller
 from bridge import Bridge
 import protocol
 from favorites import Favorites
+from profiles import Profiles
 from diagnostics import issue, diagnose
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -56,7 +57,25 @@ class Desktop:
         self.remembered = dict(address=self.device,name=self.device_name) if self.device else None
         self.commands = asyncio.Lock()
         self.stop = asyncio.Event()
+        self.remembered_profile=None;self.profile_error=None
+        if self.device:self.load_profile()
         self.effects = json.loads((ROOT/'windows/effects.json').read_text()) if (ROOT/'windows/effects.json').exists() else json.loads((ROOT/'linux/effects.json').read_text())
+
+    def load_profile(self):
+        try:
+            self.remembered_profile=Profiles(self.directory()).load();self.profile_error=None
+            if self.remembered_profile:
+                profile=self.remembered_profile
+                for key in ('mode','rgb','brightness','effect','scene','speed'):setattr(self,key,profile['setting'][key])
+                self.on=profile['on']
+        except (OSError,ValueError,TypeError,KeyError):
+            self.remembered_profile=None;self.profile_error='Profil mémorisé illisible ; fichier conservé.'
+
+    def remember_profile(self,bridge_state=True):
+        if (not self.known and not self.remembered_profile) or self.mic:return
+        try:
+            self.remembered_profile=Profiles(self.directory()).save(self.on,self.favorite_snapshot(),bridge_state);self.profile_error=None
+        except (OSError,ValueError,TypeError):self.profile_error='Réglage appliqué, mais profil non enregistré. Vérifiez le stockage.'
 
     def start_reconnect(self, interval=10):
         if self.auto_task is None:
@@ -83,7 +102,7 @@ class Desktop:
             from gateway_host import GatewayHost
             from lantern import node_path
             self.gateway_host=GatewayHost(node_path(),ROOT/'gateway/desktop-worker.js',self.base/'desktop-bridge')
-        if action in ('start','test-device','refresh-devices','apply','apply-group'):
+        if action in ('start','test-device','refresh-devices','apply','apply-group','restore-profile'):
             self.gateway_starting=action=='start';self.auto_paused=True
             await self.disconnect()
         try:return await self.gateway_host.command(action,data)
@@ -94,7 +113,7 @@ class Desktop:
         if self.controller and not self.controller.connected and not self.connect_task and not self.bridge_task and self.connection_issue is None:
             self.connection_issue=issue(ConnectionError('Connexion perdue.'));self.status='Connexion interrompue.'
         from desktop_tools import autostart_enabled
-        return dict(autostart=autostart_enabled(),gateway=self.gateway_host.state if self.gateway_host else {'available':False,'active':False},version='0.8.0',favorites=favorites,favoritesError=error,canSaveFavorite=self.known and not self.mic and not error,connectionIssue=self.connection_issue,connecting=self.connect_task is not None,connectionAttempt=self.attempt,platform='linux',connected=bool(self.controller and self.controller.connected),device=self.device,deviceName=self.device_name,
+        return dict(rememberedProfile=self.remembered_profile,profileError=self.profile_error,autostart=autostart_enabled(),gateway=self.gateway_host.state if self.gateway_host else {'available':False,'active':False},version='0.8.1',favorites=favorites,favoritesError=error,canSaveFavorite=self.known and not self.mic and not error,connectionIssue=self.connection_issue,connecting=self.connect_task is not None,connectionAttempt=self.attempt,platform='linux',connected=bool(self.controller and self.controller.connected),device=self.device,deviceName=self.device_name,
                     on=self.on,brightness=self.brightness,rgb=self.rgb,mic=self.mic,bridge=self.bridge_task is not None and not self.bridge_task.done(),
                     pairingReady=self.pairing_ready,devices=self.devices,effects=self.effects,status=self.status)
 
@@ -126,6 +145,7 @@ class Desktop:
         except OSError:pass
         self.remembered=dict(address=address,name=self.device_name)
         self.auto_paused=False
+        self.load_profile()
         self.known=False;self.connection_issue=None
         self.status='Votre lumière est connectée.'
 
@@ -156,6 +176,7 @@ class Desktop:
         elif event.get('kind')=='light':
             state=event['state'];self.on=state['on'];self.brightness=state['brightness'];self.mic=False;self.mode='color';self.known=True
             self.rgb=''.join(f'{round(x*255):02X}' for x in colorsys.hsv_to_rgb(state['hue']/360,state['saturation']/100,1))
+            self.remember_profile(False)
         elif event.get('kind')=='warning': self.status=event['message']
 
     async def stop_bridge(self):
@@ -213,6 +234,15 @@ class Desktop:
                 if not self.known or self.mic:raise ValueError('Choisissez une couleur ou une animation avant de l’enregistrer.')
                 self.favorites.save(data['name'],self.favorite_snapshot())
             elif action=='favorite-delete':self.favorites.delete(data['id'])
+            elif action=='profile-restore':
+                if not self.controller or not self.controller.connected:raise ValueError('Connectez vos LED avant de rétablir le profil.')
+                value=Profiles(self.directory()).load()
+                if not value:raise ValueError('Aucun profil mémorisé.')
+                await self.controller.write(Profiles.frames(value))
+                self.remembered_profile=value
+                for key in ('mode','rgb','brightness','effect','scene','speed'):setattr(self,key,value['setting'][key])
+                self.on=value['on'];self.mic=False;self.known=True
+                self.status='Votre profil mémorisé est rétabli.'
             elif action=='favorite-apply':
                 if not self.controller or not self.controller.connected:raise ValueError('Connectez vos LED dans Appareils.')
                 favorite=self.favorites.get(data['id'])
@@ -233,7 +263,7 @@ class Desktop:
             else:
                 if not self.controller or not self.controller.connected: raise ValueError('Connectez vos LED dans Appareils.')
                 if action=='power':
-                    frames=[protocol.microphone(False),protocol.power(data['on'])] if not data['on'] else [protocol.power(True)]
+                    frames=[protocol.microphone(False),protocol.power(False)] if not data['on'] else Profiles.frames(dict(on=True,setting=self.remembered_profile['setting'])) if self.remembered_profile and not self.mic else [protocol.power(True)]
                 elif action=='color':
                     rgb=data['rgb']
                     if not isinstance(rgb,str) or not re.fullmatch('[0-9A-Fa-f]{6}',rgb): raise ValueError('Couleur invalide.')
@@ -245,13 +275,16 @@ class Desktop:
                 elif action=='mic': frames=[protocol.microphone(data['on'])]+([protocol.mic_effect(data['effect']),protocol.sensitivity(data['sensitivity']),protocol.power(True)] if data['on'] else [])
                 else: raise ValueError('Commande inconnue.')
                 await self.controller.write(frames)
-                if action=='power': self.on=data['on'];self.mic=self.mic if self.on else False
+                if action=='power':
+                    self.on=data['on'];self.mic=self.mic if self.on else False
+                    if self.remembered_profile and not self.mic:self.known=True
                 if action=='color': self.rgb=data['rgb'].upper();self.on=True;self.mic=False;self.mode='color';self.known=True
                 if action=='brightness': self.brightness=data['value']
                 if action=='effect': self.on=True;self.mic=False;self.mode='effect';self.effect=data['id'];self.scene=bool(data.get('scene'));self.speed=data['speed'];self.known=True
                 if action=='speed':self.speed=data['value']
                 if action=='mic': self.mic=data['on'];self.on=self.on or self.mic
                 self.status='Votre réglage a été appliqué.'
+            if action in ('power','color','brightness','effect','speed','favorite-apply','profile-restore'):self.remember_profile()
             return {'state':self.snapshot()}
 
     def bridge_done(self,task):

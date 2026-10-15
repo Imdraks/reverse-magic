@@ -79,6 +79,8 @@ function render(next){
   $('connection-progress').hidden=!state.connecting;$('connection-attempt').textContent=`Tentative ${state.connectionAttempt||1} sur 2. Aucun réglage lumineux n’est réappliqué.`;
   $('connection-issue').hidden=!state.connectionIssue;
   if(state.connectionIssue){$('issue-title').textContent=state.connectionIssue.title;$('issue-message').textContent=state.connectionIssue.message;}
+  $('manual-profile-restore').disabled=pending||locked||!state.connected||!state.rememberedProfile;
+  $('manual-profile-note').textContent=state.profileError||(state.rememberedProfile?`Profil mémorisé : ${state.rememberedProfile.setting.mode==='effect'?'animation':'couleur #'+state.rememberedProfile.setting.rgb}, ${state.rememberedProfile.setting.brightness} %, ${state.rememberedProfile.on?'allumé':'éteint'}. Ces valeurs sont la dernière consigne enregistrée.`:'Le dernier réglage confirmé sera mémorisé sur cet appareil.');
   $('favorite-save').disabled=pending||!state.connected||state.bridge||Boolean(state.gateway?.active)||!state.canSaveFavorite;
   $('diagnose').disabled=pending;$('check-updates').disabled=pending;
   const signature=JSON.stringify([state.devices,state.connected,state.device,pending,state.bridge,state.gateway?.active]);
@@ -117,6 +119,7 @@ const swatches=[['FFB340','Ambre doux'],['FF765E','Corail'],['F4A7BE','Rose poud
 for(const [rgb,name] of swatches){const button=document.createElement('button');button.className='swatch manual';button.style.backgroundColor='#'+rgb;button.dataset.rgb=rgb;button.setAttribute('aria-label',name);button.title=name;button.onclick=()=>act('color',{rgb});$('swatches').append(button);}
 const ambiences=[{name:'Heure dorée',sub:'La douceur de la fin du jour',rgb:'FFB340',class:'sunset',icon:'sun'},{name:'Grand bleu',sub:'Un souffle de calme',rgb:'7FAEF5',class:'ocean',icon:'moon'},{name:'Un peu de rose',sub:'Une note délicate',rgb:'F4A7BE',class:'rose',icon:'spark'},{name:'Parenthèse verte',sub:'La nature s’invite',rgb:'7DC8AC',class:'forest',icon:'palette'},{name:'Matin tranquille',sub:'Un blanc doux et chaleureux',rgb:'F3DCA5',class:'daylight',icon:'sun'},{name:'Après la pluie',sub:'Une touche de lavande',rgb:'C6A3EF',class:'lavender',icon:'moon'}];
 for(const [id,list] of [['quick-ambiences',ambiences.slice(0,4)],['all-ambiences',ambiences]])for(const scene of list){const button=document.createElement('button');button.className='ambient-card manual '+scene.class;button.innerHTML=`<span class="ambient-icon">${icon(scene.icon)}</span><strong>${scene.name}</strong><small>${scene.sub}</small>`;button.onclick=()=>act('color',{rgb:scene.rgb},scene.name+' — votre ambiance est prête.');$(id).append(button);}
+$('manual-profile-restore').onclick=()=>act('profile-restore',{},'Profil mémorisé rétabli.');
 $('power').onclick=()=>act('power',{on:!state.on});
 $('mic').onclick=()=>act('mic',{on:!state.mic,effect:Number($('mic-effect').value),sensitivity:Number($('sensitivity').value)});
 $('brightness').oninput=()=>{$('brightness-value').firstChild.textContent=$('brightness').value;$('brightness').style.setProperty('--fill',$('brightness').value+'%');};

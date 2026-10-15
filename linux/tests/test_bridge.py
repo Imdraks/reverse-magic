@@ -20,8 +20,8 @@ class BridgeTests(unittest.IsolatedAsyncioTestCase):
             task=asyncio.create_task(bridge.run())
             try:
                 async with asyncio.timeout(10):
-                    while not controller.frames: await asyncio.sleep(0.05)
-                self.assertEqual(controller.frames[0].hex(),'7e0404000000ff00ef')
+                    while not (Path(directory)/'pairing-terminal.txt').exists(): await asyncio.sleep(0.05)
+                self.assertEqual(controller.frames,[],'First connection must leave the physical profile untouched.')
                 self.assertTrue((Path(directory)/'pairing-terminal.txt').exists())
                 script = r"""
                 const fs = require('fs');

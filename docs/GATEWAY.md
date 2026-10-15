@@ -15,7 +15,7 @@ Le périmètre est exclusivement l’éclairage. [LSC Smart Connect / Tuya LAN](
 
 ## Installation
 
-Utilisez les paquets complets de la [release](https://github.com/Imdraks/reverse-magic/releases/tag/v0.8.0). Les noms de fichiers `LanternDirect` sont conservés pour faciliter la mise à jour et protéger les données existantes.
+Utilisez les paquets complets de la [release](https://github.com/Imdraks/reverse-magic/releases/tag/v0.8.1). Les noms de fichiers `LanternDirect` sont conservés pour faciliter la mise à jour et protéger les données existantes.
 
 Sur Linux/Pi 64 bits : extraire le paquet ARM64 (Pi) ou x64 (PC), installer `python3-venv` et BlueZ, puis lancer `./install.sh`. Les détails radio restent dans [le guide Linux](../linux/README.md). Le pont HTTP seul n’utilise pas la radio Bluetooth.
 
@@ -84,7 +84,7 @@ Sous Windows : `node.exe gateway/cli.js pairing --config CHEMIN`. Dans Maison : 
 
 Les identités et clés sont dans `~/.local/state/lantern-direct/gateway/<id>` sous Linux (`XDG_STATE_HOME` respecté), et `%LOCALAPPDATA%/LanternDirect/gateway/<id>` sous Windows. `--data-dir DOSSIER` change la racine ; utiliser la même option pour `run` et `pairing`. Ne pas partager ce stockage. Une seule instance peut l’utiliser ; après un arrêt brutal, attendre une dizaine de secondes pour que le verrou expire.
 
-Le relais Shelly est lu au démarrage et après reconnexion : le pont ne l’éteint pas et ne rejoue pas une ancienne consigne. Magic Lantern ne fournit pas de lecture physique : sa première synchronisation reste éteinte, puis restaure les dernières consignes de ce pont.
+Le relais Shelly est lu au démarrage et après reconnexion : le pont ne l’éteint pas et ne rejoue pas une ancienne consigne. Magic Lantern ne fournit pas de lecture physique : l’ouverture d’un pont ne lui envoie aucune consigne. Ses commandes confirmées sont mémorisées ; une perte/reprise Bluetooth au sein de la même session peut les réappliquer. Voir [la mémoire des profils](DESKTOP.md#conserver-le-profil-et-arrêter-sans-changer-la-lumière).
 
 ## Service Raspberry Pi / Linux
 

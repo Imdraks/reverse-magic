@@ -59,7 +59,7 @@ Remplacer l'adresse d'exemple par celle de vos LED :
 ./lantern bridge --device AA:BB:CC:DD:EE:FF
 ```
 
-Le terminal affiche le QR et le code numérique. Sur l'iPhone : **Maison → + → Ajouter un accessoire**. Scanner le QR dans le terminal, ou saisir le code depuis « Plus d'options ». Accepter l'accessoire non certifié si demandé. La première activation éteint les LED ; les reconnexions restaurent ensuite les dernières consignes Maison.
+Le terminal affiche le QR et le code numérique. Sur l'iPhone : **Maison → + → Ajouter un accessoire**. Scanner le QR dans le terminal, ou saisir le code depuis « Plus d'options ». Accepter l'accessoire non certifié si demandé. L’ouverture du pont laisse le contrôleur inchangé. Les dernières consignes sont mémorisées ; une perte/reprise BLE dans la même session peut les restaurer.
 
 Pi et iPhone doivent être sur le même réseau local, sans isolation des clients Wi-Fi. Le serveur annonce lui-même son service mDNS ; Avahi n'est pas nécessaire. Si un pare-feu est actif, autoriser TCP **51827** et UDP **5353** sur le réseau local. Aucune redirection de port Internet. Ctrl+C ferme le pont et libère la connexion Bluetooth.
 

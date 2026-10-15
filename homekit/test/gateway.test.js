@@ -53,7 +53,7 @@ test('one encrypted bridge routes multiple devices, real HTTP relay, isolation, 
     assert.equal((await client.getCharacteristics([on])).characteristics[0].value,1);
     await client.setCharacteristics({[on]:false});assert.deepEqual(writes,[false]);
     const hue=key('salon','00000043-','00000013-');await client.setCharacteristics({[hue]:120});
-    assert.equal(applied.salon.at(-1).hue,120);assert.equal(applied.bureau.at(-1).hue,0);
+    assert.equal(applied.salon.at(-1).hue,120);assert.deepEqual(applied.bureau,[],"other lamps must receive no fabricated initial state");
     online.salon=false;relayOnline=false;
     const offline=await client.getCharacteristics([hue,on]);assert.ok(offline.characteristics.every(c=>c.status===-70402));
     const other=key('bureau','00000043-','00000008-');await client.setCharacteristics({[other]:35});assert.equal(applied.bureau.at(-1).brightness,35);

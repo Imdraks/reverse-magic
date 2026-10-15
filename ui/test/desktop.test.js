@@ -59,6 +59,7 @@ test('desktop UI: authenticated API, devices, GRB colour, Maison pairing and ada
     await page.locator('#mic').click();
     await page.waitForFunction(()=>document.getElementById('mic').getAttribute('aria-checked')==='true');
     await page.getByRole('button',{name:'Maison',exact:true}).click();
+    const beforeHome=(await api('test-frames')).length;
     await page.getByRole('button',{name:'Activer le pont',exact:true}).click();
     await page.getByRole('button',{name:'Afficher le code',exact:true}).waitFor();
     await page.waitForFunction(()=>!document.getElementById('pairing').disabled);
@@ -67,8 +68,8 @@ test('desktop UI: authenticated API, devices, GRB colour, Maison pairing and ada
     assert.match(await page.locator('#pairing-code').textContent(),/^\d{3}-\d{2}-\d{3}$/);
     await page.getByRole('button',{name:'Fermer',exact:true}).click();
     await page.getByRole('button',{name:'Magic Lantern',exact:true}).click();assert.ok(await page.locator('#power').isDisabled());
-    await page.waitForFunction(()=>document.getElementById('power').getAttribute('aria-checked')==='false');
-    assert.ok((await api('test-frames')).includes('7e0404000000ff00ef'),'HomeKit initial synchronization must reach the controller');
+    await page.waitForFunction(()=>document.getElementById('power').getAttribute('aria-checked')==='true');
+    assert.ok(!(await api('test-frames')).slice(beforeHome).includes('7e0404000000ff00ef'),'HomeKit must preserve the saved profile without a default off pulse');
     assert.equal((await api('state')).mic,false,'Maison must leave music mode and clear its indicator');
     await page.getByRole('button',{name:'Maison',exact:true}).click();await page.getByRole('button',{name:'Arrêter le pont',exact:true}).click();
     await page.waitForFunction(()=>document.getElementById('bridge-toggle').textContent==='Activer le pont');
@@ -113,13 +114,14 @@ test('desktop installation: add and edit a real HTTP light, Home locks API and U
     await page.locator('#gateway-toggle').click();await page.waitForFunction(()=>document.getElementById('gateway-toggle').textContent==='Désactiver Maison'&&!document.getElementById('gateway-toggle').disabled);
     for(const selector of ['#gateway-add','#group-on','#gateway-refresh'])assert.equal(await page.locator(selector).isDisabled(),true);
     assert.equal(await page.getByRole('button',{name:'Modifier',exact:true}).isDisabled(),true);
-    for(const [action,data] of [['gateway-save-device',{name:'Interdit'}],['gateway-apply-group',{on:true}],['gateway-backup',{password:'a long enough phrase'}],['power',{on:true}],['scan',{all:false}]]){const reply=await api(action,data);assert.equal(reply.ok,false);assert.match(reply.error,/Maison est actif/);}
+    for(const [action,data] of [['gateway-save-device',{name:'Interdit'}],['gateway-apply-group',{on:true}],['gateway-restore-profile',{id}],['gateway-backup',{password:'a long enough phrase'}],['power',{on:true}],['scan',{all:false}]]){const reply=await api(action,data);assert.equal(reply.ok,false);assert.match(reply.error,/Maison est actif/);}
     assert.deepEqual(writes,[]);
     await page.locator('#gateway-pairing').click();await page.locator('#pairing-dialog[open]').waitFor();const pairing=await page.locator('#pairing-code').textContent();await page.locator('#close-pairing').click();
     await page.locator('#gateway-toggle').click();await page.waitForFunction(()=>!document.getElementById('gateway-add').disabled);
     await page.getByRole('button',{name:'Modifier',exact:true}).click();await page.locator('#new-room').fill('Bureau');await page.locator('#new-name').fill('Liseuse');await page.locator('#new-save').click();await page.locator('#device-dialog').waitFor({state:'hidden'});await page.getByRole('heading',{name:'Liseuse',exact:true}).waitFor();
     assert.equal((await api('gateway-state')).result.gatewayResult.devices[0].id,id);
     await page.locator('#room-filter').selectOption('Bureau');await page.locator('#group-on').click();await page.waitForFunction(()=>!document.getElementById('group-on').disabled);assert.deepEqual(writes,[true]);
+    relayOn=false;page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Rétablir le profil',exact:true}).click();await page.waitForFunction(()=>!document.getElementById('group-on').disabled);assert.deepEqual(writes,[true,true]);
     await page.getByRole('button',{name:'Réglages',exact:true}).click();await page.locator('#gateway-backup').click();await page.locator('#backup-password').fill('a long backup passphrase');const downloaded=page.waitForEvent('download');await page.locator('#backup-submit').click();const download=await downloaded;const savedFile=await download.path();assert.equal(JSON.parse(await fs.readFile(savedFile,'utf8')).format,'lantern-backup-1');await page.locator('#backup-dialog').waitFor({state:'hidden'});
     await page.getByRole('button',{name:'Le pont',exact:true}).click();page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Retirer',exact:true}).click();await page.waitForFunction(()=>document.getElementById('gateway-devices').textContent.includes('Une première lumière'));
     await page.getByRole('button',{name:'Réglages',exact:true}).click();await page.locator('#gateway-restore').click();await page.locator('#restore-file').setInputFiles(savedFile);await page.locator('#backup-password').fill('a long backup passphrase');page.once('dialog',dialog=>dialog.accept());await page.locator('#backup-submit').click();await page.locator('#backup-dialog').waitFor({state:'hidden'});

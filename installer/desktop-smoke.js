@@ -7,14 +7,18 @@ async function main(){
   const relay=http.createServer((request,response)=>{if(new URL(request.url,'http://localhost').searchParams.has('turn'))writes++;response.end('{"ison":true}');});
   await new Promise(resolve=>relay.listen(0,'127.0.0.1',resolve));
   const reservation=net.createServer();await new Promise(resolve=>reservation.listen(0,'127.0.0.1',resolve));const port=reservation.address().port;await new Promise(resolve=>reservation.close(resolve));
-  const manager=await new DesktopManager(directory).init();
+  let manager=await new DesktopManager(directory).init();
   try{
     const project=await manager.load();project.config.port=port;await manager.save(project);
     await manager.command('save-device',{name:'Installed light',room:'Test',adapter:'shelly-gen1-relay',options:{host:`http://127.0.0.1:${relay.address().port}`,channel:0}});
     await manager.command('start');
     await assert.rejects(manager.command('apply-group',{on:false}),/Maison est actif/);assert.equal(writes,0);
     const pairing=await manager.command('pairing');assert.match(pairing.image,/^data:image\/png;base64,/);
-    await manager.command('stop');const backup=await manager.command('backup',{password:'installed backup test phrase'});
+    await manager.command('stop');
+    const saved=(await manager.snapshot()).devices[0];await manager.close();
+    manager=await new DesktopManager(directory).init();assert.equal((await manager.snapshot()).devices[0].profile.state.on,true);
+    const before=writes;assert.equal((await manager.command('restore-profile',{id:saved.id})).results[0].ok,true);assert.equal(writes,before+1);
+    const backup=await manager.command('backup',{password:'installed backup test phrase'});
     await manager.command('restore',{backup:backup.backup,password:'installed backup test phrase'});
     await manager.command('start');assert.equal((await manager.command('pairing')).code,pairing.code);await manager.command('stop');
     console.log('Installed desktop bridge: activation, command lock, encrypted backup, identity restore and reactivation verified.');

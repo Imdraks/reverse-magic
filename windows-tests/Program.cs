@@ -68,4 +68,21 @@ try
     if(File.ReadAllText(file)!="invalid user data")throw new Exception("Corrupt user file changed");count++;
 }
 finally{if(Directory.Exists(directory))Directory.Delete(directory,true);}
-Console.WriteLine($"{count} protocol checks passed; 0 failures.");
+var profileDirectory=Path.Combine(Path.GetTempPath(),"lantern-profile-"+Guid.NewGuid().ToString("N"));
+try
+{
+    var profiles=new ManualProfiles(profileDirectory);
+    profiles.Save(true,new Favorite("","","color","FF0000",42,0,false,50));
+    var last=new ManualProfiles(profileDirectory).Load()??throw new Exception("Profile disappeared");
+    if(last.setting.rgb!="FF0000"||last.setting.brightness!=42||!last.on)throw new Exception("Profile changed after reopen");count++;
+    Check(ManualProfiles.Frames(last)[1],"7E 07 05 03 00 FF 00 10 EF");
+    var off=profiles.Save(false,last.setting);
+    if(ManualProfiles.Frames(off).Length!=2||ManualProfiles.Frames(off).Any(frame=>frame.SequenceEqual(LedProtocol.Power(true))))throw new Exception("Off profile created an on pulse");count++;
+    using(var state=System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(profileDirectory,"state.json"))))
+    {if(state.RootElement.GetProperty("on").GetBoolean()||state.RootElement.GetProperty("hue").GetDouble()!=0||state.RootElement.GetProperty("saturation").GetDouble()!=100)throw new Exception("HomeKit memory did not preserve RGB profile");count++;}
+    File.WriteAllText(Path.Combine(profileDirectory,"manual-profile.json"),"corrupt profile");
+    try{profiles.Save(true,last.setting);throw new Exception("Corrupt profile overwritten");}catch(System.Text.Json.JsonException){}
+    if(File.ReadAllText(Path.Combine(profileDirectory,"manual-profile.json"))!="corrupt profile")throw new Exception("Corrupt profile changed");count++;
+}
+finally{if(Directory.Exists(profileDirectory))Directory.Delete(profileDirectory,true);}
+Console.WriteLine($"{count} checks including persistent profiles passed; 0 failures.");

@@ -6,11 +6,11 @@ Le projet se concentre sur l’éclairage : ampoules, rubans, luminaires et cont
 
 ## Installer
 
-[**Télécharger v0.8.0 — assistant et sauvegardes, version de test**](https://github.com/Imdraks/reverse-magic/releases/tag/v0.8.0)
+[**Télécharger v0.8.1 — mémoire des profils, version de test**](https://github.com/Imdraks/reverse-magic/releases/tag/v0.8.1)
 
-- **Windows** : [installateur](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.0/LanternDirect-Setup.exe) ou [paquet portable complet](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.0/LanternDirect-Windows-HomeKit.zip).
-- **Raspberry Pi OS 64 bits** : [ARM64](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.0/LanternDirect-Linux-arm64.tar.gz), installation terminal et service sans écran.
-- **PC Linux** : [x64](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.0/LanternDirect-Linux-x64.tar.gz), terminal, service et interface locale.
+- **Windows** : [installateur](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.1/LanternDirect-Setup.exe) ou [paquet portable complet](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.1/LanternDirect-Windows-HomeKit.zip).
+- **Raspberry Pi OS 64 bits** : [ARM64](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.1/LanternDirect-Linux-arm64.tar.gz), installation terminal et service sans écran.
+- **PC Linux** : [x64](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.1/LanternDirect-Linux-x64.tar.gz), terminal, service et interface locale.
 
 Les noms techniques `LanternDirect` et les dossiers de données sont conservés pour faciliter les mises à jour. L’installateur contient Node et le pont ; le runtime .NET est inclus. Sous Linux, installer Python/BlueZ selon [le guide](linux/README.md). WebView2 est nécessaire pour le GUI Windows moderne.
 
@@ -19,6 +19,8 @@ Les noms techniques `LanternDirect` et les dossiers de données sont conservés 
 [**Guide de l’interface : ajout, pièces, Maison et sauvegarde**](docs/DESKTOP.md)
 
 Ouvrir **Le pont → Ajouter un éclairage**, renseigner la connexion, tester puis enregistrer. Activer Maison et afficher son code pour l’appairage. Pour ajouter un autre appareil ensuite : **désactiver Maison, ajouter, puis réactiver**. Les commandes directes restent bloquées pendant le mode Maison.
+
+Le dernier profil confirmé est mémorisé sur disque. Arrêter Lantern ou ouvrir un pont ne commande ni extinction ni réinitialisation ; un rappel explicite reste disponible, Maison désactivé. La conservation autonome après une coupure électrique dépend de la mémoire du firmware de l’ampoule.
 
 Dans Réglages : démarrage automatique, sauvegarde chiffrée, restauration et journal de session. Les pièces et commandes de groupe sont disponibles dans le tableau de bord. Le module Magic Lantern historique reste accessible.
 

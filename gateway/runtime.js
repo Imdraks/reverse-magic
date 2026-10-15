@@ -11,6 +11,7 @@ const { LightEngine } = require('../homekit/light-engine');
 const { loadIdentity, loadLightStorage } = require('../homekit/storage');
 const {ObservedEngine}=require('./observed-engine');
 const {attachObserved}=require('./observed-accessory');
+const {ProfileStore}=require('./profile-store');
 class Gateway {
   constructor(config, directory, { adapterFactory, bind, onStatus = () => {} } = {}) {
     this.config = validateConfig(config); this.directory = path.resolve(directory); this.adapterFactory = adapterFactory;
@@ -28,13 +29,15 @@ class Gateway {
         .setCharacteristic(Characteristic.Manufacturer, 'Lantern Bridge')
         .setCharacteristic(Characteristic.Model, 'HomeKit Bridge')
         .setCharacteristic(Characteristic.SerialNumber, this.config.id)
-        .setCharacteristic(Characteristic.FirmwareRevision, '0.8.0');
+        .setCharacteristic(Characteristic.FirmwareRevision, '0.8.1');
       for (const device of this.config.devices) {
         const definition = adapters[device.adapter];
         const adapter = this.adapterFactory ? this.adapterFactory(device) : definition.create(device, {});
         const entry = { id: device.id, adapter }; this.devices.push(entry);
         const description=definition.describe?.(device.options);
-        const engine = description?new ObservedEngine(adapter,description.fields):new LightEngine(adapter, await loadLightStorage(path.join(this.directory,'devices',device.id)));
+        const storageDirectory=path.join(this.directory,'devices',device.id);
+        const profiles=description?new ProfileStore(storageDirectory,device):undefined;
+        const engine = description?new ObservedEngine(adapter,description.fields,{save:(state,context)=>profiles.save(state,{...context,mode:adapter.profileMode})}):new LightEngine(adapter, await loadLightStorage(storageDirectory));
         entry.engine = engine;
         const accessory = new Accessory(device.name, uuid.generate(`LanternBridge:device:${device.id}`));
         accessory.getService(Service.AccessoryInformation)
@@ -58,13 +61,14 @@ class Gateway {
   }
   async refresh() {
     await Promise.allSettled(this.devices.map(device => device.engine.refresh()));
-    if (!this.closed) this.onStatus(this.devices.map(device => ({ id: device.id, online: device.engine.online })));
+    if (!this.closed) this.onStatus(this.devices.map(device => ({ id: device.id, online: device.engine.online,profileWarning:Boolean(device.engine.persistenceError) })));
   }
   async stop() {
     if (this.closed) return;
     this.closed = true; clearInterval(this.timer);
     for (const device of this.devices) { device.engine?.close(); device.detach?.(); }
     await Promise.allSettled(this.devices.map(device => device.adapter.close()));
+    await Promise.allSettled(this.devices.map(device => device.engine?.settle()));
     try { if (this.bridge) await this.bridge.unpublish(); }
     finally {
       try { if (this.releaseWindows) await this.releaseWindows(); }

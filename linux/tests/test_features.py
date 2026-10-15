@@ -126,3 +126,39 @@ class AutoReconnectTests(unittest.IsolatedAsyncioTestCase):
                 await app.close()
             self.assertIsNone(app.controller)
             self.assertIsNone(app.connect_task)
+
+class ProfileMemoryTests(unittest.IsolatedAsyncioTestCase):
+    async def test_manual_profile_survives_full_shutdown_without_disconnect_frames(self):
+        class Radio:
+            def __init__(self,*args):self.connected=False;self.frames=[]
+            async def connect(self):self.connected=True
+            async def close(self):self.connected=False
+            async def write(self,frames):self.frames.extend(frames)
+        with tempfile.TemporaryDirectory() as directory:
+            args=SimpleNamespace(device=None,adapter=None,data_dir=Path(directory))
+            first=Desktop(args,Radio)
+            await first.command('connect',dict(address='AA:BB:CC:DD:EE:FF'))
+            await first.command('color',dict(rgb='FF0000'));await first.command('brightness',dict(value=42))
+            radio=first.controller;before=list(radio.frames)
+            await first.command('disconnect',{});await first.close()
+            self.assertEqual(radio.frames,before,'Shutdown must not send a light or reset command.')
+            second=Desktop(args,Radio)
+            self.assertEqual(second.remembered_profile['setting']['rgb'],'FF0000')
+            self.assertEqual(second.brightness,42)
+            await second.command('connect',dict(address='AA:BB:CC:DD:EE:FF'))
+            self.assertEqual(second.controller.frames,[],'Reconnection must leave the physical profile alone.')
+            await second.command('profile-restore',{})
+            self.assertEqual(second.controller.frames[1].hex(),'7e07050300ff0010ef')
+            self.assertFalse(any(frame==__import__('protocol').power(False) for frame in second.controller.frames))
+            await second.command('power',dict(on=False));await second.close()
+            third=Desktop(args,Radio)
+            self.assertFalse(third.remembered_profile['on'])
+            self.assertEqual(third.rgb,'FF0000')
+            await third.close()
+
+    async def test_invalid_profile_is_preserved(self):
+        from profiles import Profiles
+        with tempfile.TemporaryDirectory() as directory:
+            store=Profiles(directory);store.path.write_text('bad user file')
+            with self.assertRaises(ValueError):store.save(True,dict(mode='color',rgb='FF0000',brightness=42,effect=0,scene=False,speed=50))
+            self.assertEqual(store.path.read_text(),'bad user file')

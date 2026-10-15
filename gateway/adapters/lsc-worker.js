@@ -4,8 +4,9 @@ const readline=require('node:readline');
 const crypto=require('node:crypto');
 const Tuya=require('../../homekit/node_modules/tuyapi');
 const {decode,encode,probe}=require('./lsc-codec');
+const {lightProfile}=require('./lsc-profiles');
 let device,finished=false;
-function finish(ok,result){if(finished)return;finished=true;device?.disconnect();process.stdout.write(JSON.stringify({ok,...(ok?{result}:{})})+'\n',()=>process.exit(ok?0:1));}
+function finish(ok,result,profileMode){if(finished)return;finished=true;device?.disconnect();process.stdout.write(JSON.stringify({ok,...(ok?{result,...(profileMode?{profileMode}:{})}:{})})+'\n',()=>process.exit(ok?0:1));}
 const input=readline.createInterface({input:process.stdin});
 input.once('line',async line=>{
   input.close();process.stdin.pause();
@@ -32,6 +33,7 @@ input.once('line',async line=>{
       dps=(await device.get({schema:true}))?.dps;
       if(!dps||Object.entries(command).some(([dp,value])=>dps[dp]!==value))throw new Error('Write not confirmed');
     }else if(operation!=='read')throw new Error('Unknown operation');
-    finish(true,decode(options,dps));
+    const map=lightProfile(options).dps,mode=map.mode?dps[map.mode]:undefined;
+    finish(true,decode(options,dps),mode==='white'||mode==='colour'?mode:map.mode?'unsupported':undefined);
   }catch{finish(false);}
 });

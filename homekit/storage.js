@@ -3,9 +3,17 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { validatePatch, DEFAULT_STATE } = require('./light-engine');
 async function writeJSON(file, value) {
-  const temporary = `${file}.tmp`;
-  await fs.writeFile(temporary, JSON.stringify(value), { mode: 0o600 });
-  await fs.rename(temporary, file);
+  const temporary = `${file}.${crypto.randomBytes(8).toString('hex')}.tmp`;
+  let handle;
+  try {
+    handle=await fs.open(temporary,'wx',0o600);
+    await handle.writeFile(JSON.stringify(value));await handle.sync();await handle.close();handle=undefined;
+    await fs.rename(temporary,file);
+    if(process.platform!=='win32'){
+      const directory=await fs.open(path.dirname(file),'r');
+      try{await directory.sync();}finally{await directory.close();}
+    }
+  } finally {if(handle)await handle.close();await fs.rm(temporary,{force:true});}
 }
 async function loadJSON(file, fallback) {
   try { return JSON.parse(await fs.readFile(file, 'utf8')); } catch (error) { if (error.code === 'ENOENT') return fallback(); throw error; }
@@ -25,12 +33,13 @@ async function loadIdentity(directory) {
 }
 async function loadLightStorage(directory) {
   await fs.mkdir(directory, { recursive: true, mode: 0o700 });
-  const state = await loadJSON(path.join(directory, 'state.json'), () => ({ ...DEFAULT_STATE }));
+  let hasSavedState=true;
+  const state = await loadJSON(path.join(directory, 'state.json'), () => {hasSavedState=false;return { ...DEFAULT_STATE };});
   validatePatch(state);
   if (Object.keys(state).length !== 4) throw new Error('Invalid saved light state');
-  return { state, save: value => writeJSON(path.join(directory, 'state.json'), value) };
+  return { state, hasSavedState, save: value => writeJSON(path.join(directory, 'state.json'), value) };
 }
 async function loadStorage(directory) {
   return { identity: await loadIdentity(directory), ...await loadLightStorage(directory) };
 }
-module.exports = { loadStorage, loadIdentity, loadLightStorage };
+module.exports = { loadStorage, loadIdentity, loadLightStorage, writeJSON };

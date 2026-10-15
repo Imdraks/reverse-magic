@@ -31,7 +31,7 @@ class LscTuya {
         child.once('error',()=>{failed=true;});
         child.once('close',code=>{
           clearTimeout(timer);this.children.delete(child);
-          try{if(failed||code!==0||this.closed)throw new Error();const response=JSON.parse(output);if(!response.ok)throw new Error();resolve(response.result);}
+          try{if(failed||code!==0||this.closed)throw new Error();const response=JSON.parse(output);if(!response.ok)throw new Error();this.profileMode=['white','colour','unsupported'].includes(response.profileMode)?response.profileMode:undefined;resolve(response.result);}
           catch{reject(new Error('LSC indisponible : vérifiez adresse, version, clé locale et profil DP.'));}
         });
         child.stdin.end(JSON.stringify({options:this.options,operation,patch})+'\n');

@@ -75,19 +75,25 @@ public sealed partial class MainForm : Form
         page.Controls.Add(controls);
         controls.Controls.Add(Heading("Lumière"));
         controls.Controls.Add(Row(
-            Button("Allumer", () => ble.SendAsync(LedProtocol.Power(true))),
-            Button("Éteindre", async () => { await StopMusic(); await ble.SendAsync(LedProtocol.Power(false)); }),
+            Button("Allumer", async () =>
+            {
+                if(rememberedProfile!=null&&!controllerMic){foreach(var frame in ManualProfiles.Frames(rememberedProfile with {on=true}))await ble.SendAsync(frame);desktopKnown=true;}
+                else await ble.SendAsync(LedProtocol.Power(true));
+                desktopOn=true;RememberManualProfile();
+            }),
+            Button("Éteindre", async () => { await StopMusic(); await ble.SendAsync(LedProtocol.Power(false)); desktopOn=false;if(rememberedProfile!=null)desktopKnown=true;RememberManualProfile(); }),
             Button("Choisir une couleur", async () =>
             {
                 using var dialog = new ColorDialog { FullOpen = true, Color = selectedColor };
                 if (dialog.ShowDialog(this) != DialogResult.OK) return;
-                selectedColor = dialog.Color;
+                var chosenColor = dialog.Color;
                 await StopMusic();
-                await ble.SendAsync(LedProtocol.Color(selectedColor.R, selectedColor.G, selectedColor.B));
+                await ble.SendAsync(LedProtocol.Color(chosenColor.R, chosenColor.G, chosenColor.B));
                 await ble.SendAsync(LedProtocol.Brightness(brightness.Value));
+                await ble.SendAsync(LedProtocol.Power(true));selectedColor=chosenColor;desktopMode="color";desktopKnown=true;desktopOn=true;RememberManualProfile();
             })));
         controls.Controls.Add(Row(new Label { Text = "Luminosité (0–100 %)", AutoSize = true }, brightness,
-            Button("Appliquer", () => ble.SendAsync(LedProtocol.Brightness(brightness.Value)))));
+            Button("Appliquer", async () => {await ble.SendAsync(LedProtocol.Brightness(brightness.Value));RememberManualProfile();})));
 
         controls.Controls.Add(Heading("Effets RGBIC"));
         foreach (var name in catalog.Select(x => x.group).Distinct()) groups.Items.Add(name);
@@ -105,9 +111,11 @@ public sealed partial class MainForm : Form
             await StopMusic();
             await ble.SendAsync(effect.isScene ? LedProtocol.Scene(effect.code) : LedProtocol.Effect(effect.code));
             await ble.SendAsync(LedProtocol.Brightness(brightness.Value));
+            await ble.SendAsync(LedProtocol.Speed(speed.Value));await ble.SendAsync(LedProtocol.Power(true));
+            desktopMode="effect";desktopEffect=effect.code;desktopScene=effect.isScene;desktopSpeed=speed.Value;desktopKnown=true;desktopOn=true;RememberManualProfile();
         }));
         controls.Controls.Add(Row(new Label { Text = "Vitesse (0–100 %)", AutoSize = true }, speed,
-            Button("Appliquer", () => ble.SendAsync(LedProtocol.Speed(speed.Value)))));
+            Button("Appliquer", async () => {await ble.SendAsync(LedProtocol.Speed(speed.Value));desktopSpeed=speed.Value;RememberManualProfile();})));
 
         controls.Controls.Add(Heading("Microphone du contrôleur (si équipé)"));
         micEffect.Items.AddRange(["Énergie", "Rythme", "Spectre", "Défilement", "Énergie 2", "Rythme 2", "Spectre 2", "Défilement 2"]);
@@ -142,6 +150,7 @@ public sealed partial class MainForm : Form
         InitializeDesktop(page);
         InitializeReconnect(homekitAtStartup || gatewayAtStartup);
         InitializeGateway(gatewayAtStartup);
+        LoadManualProfile();
     }
 
     private async Task Connect(FoundLED selected, CancellationToken cancellationToken = default)
@@ -150,6 +159,8 @@ public sealed partial class MainForm : Form
         await ble.ConnectAsync(selected.Address, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         lastDevice = selected;
+        LoadManualProfile();
+        desktopKnown=false;
         autoReconnectPaused = false;
         // Failure to save a convenience preference must not invalidate a live connection.
         try { Directory.CreateDirectory(Path.GetDirectoryName(preferencesPath)!); File.WriteAllText(preferencesPath, JsonSerializer.Serialize(selected)); } catch { }

@@ -64,7 +64,7 @@ public sealed partial class MainForm
     {
         using var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run");
         var (favorites,favoritesError)=favoriteStore.Snapshot();
-        return new { gateway=gatewayHost?.State??JsonSerializer.SerializeToElement(new {available=false,active=false}),version="0.8.0",favorites,favoritesError,canSaveFavorite=desktopKnown&&!controllerMic&&favoritesError==null,connectionIssue=desktopIssue,connecting=desktopConnectCancel!=null,connectionAttempt=desktopAttempt,platform="windows", connected=ble.IsReady, device=lastDevice is null?null:FormatAddress(lastDevice.Address), deviceName=lastDevice?.Name,
+        return new {rememberedProfile,profileError,gateway=gatewayHost?.State??JsonSerializer.SerializeToElement(new {available=false,active=false}),version="0.8.1",favorites,favoritesError,canSaveFavorite=desktopKnown&&!controllerMic&&favoritesError==null,connectionIssue=desktopIssue,connecting=desktopConnectCancel!=null,connectionAttempt=desktopAttempt,platform="windows", connected=ble.IsReady, device=lastDevice is null?null:FormatAddress(lastDevice.Address), deviceName=lastDevice?.Name,
             on=desktopOn, brightness=brightness.Value, rgb=$"{selectedColor.R:X2}{selectedColor.G:X2}{selectedColor.B:X2}",mic=controllerMic,
             bridge=homeKit!=null,pairingReady=pairingCode!=null,autostart=key?.GetValue("LanternDirectHomeKit") is string,
             devices=found.Values.Select(x=>new {address=FormatAddress(x.Address),name=x.Name,rssi=x.RSSI}).ToArray(),effects=catalog,
@@ -117,7 +117,7 @@ public sealed partial class MainForm
             if(busy||reconnecting)throw new InvalidOperationException("Attendez la fin de la connexion en cours.");
             gatewayHost??=new GatewayHost();
             var operation=action[8..];
-            if(operation is "start" or "test-device" or "refresh-devices" or "apply" or "apply-group"){autoReconnectPaused=true;StopScan();ble.Disconnect();controllerMic=false;}
+            if(operation is "start" or "test-device" or "refresh-devices" or "apply" or "apply-group" or "restore-profile"){autoReconnectPaused=true;StopScan();ble.Disconnect();controllerMic=false;}
             var result=await gatewayHost.Command(operation,data);
             tray.Visible=gatewayHost.Active;
             return new {gatewayResult=result,state=DesktopState()};
@@ -143,6 +143,7 @@ public sealed partial class MainForm
             case "disconnect":autoReconnectPaused=true;StopScan();ble.Disconnect();controllerMic=false;desktopIssue=null;status.Text="Connexion fermée.";break;
             case "bridge-start":await StartHomeKit();break;
             case "bridge-stop":StopHomeKit();break;
+            case "profile-restore":await RestoreManualProfile();break;
             case "favorite-save":
                 if(!desktopKnown||controllerMic)throw new InvalidOperationException("Choisissez une couleur ou une animation avant de l’enregistrer.");
                 favoriteStore.Save(data.GetProperty("name").GetString()!,DesktopFavorite());break;
@@ -169,7 +170,10 @@ public sealed partial class MainForm
                 switch(action)
                 {
                     case "power":
-                        var on=data.GetProperty("on").GetBoolean();if(!on)await StopMusic();await ble.SendAsync(LedProtocol.Power(on));desktopOn=on;break;
+                        var on=data.GetProperty("on").GetBoolean();if(!on)await StopMusic();
+                        if(on&&rememberedProfile!=null&&!controllerMic){foreach(var storedFrame in ManualProfiles.Frames(rememberedProfile with {on=true}))await ble.SendAsync(storedFrame);desktopKnown=true;}
+                        else await ble.SendAsync(LedProtocol.Power(on));
+                        desktopOn=on;if(rememberedProfile!=null&&!controllerMic)desktopKnown=true;break;
                     case "color":
                         var rgb=data.GetProperty("rgb").GetString()!;
                         if(!System.Text.RegularExpressions.Regex.IsMatch(rgb,@"^[0-9A-Fa-f]{6}$"))throw new ArgumentException("Couleur invalide.");
@@ -191,6 +195,7 @@ public sealed partial class MainForm
                 status.Text="Votre réglage a été appliqué.";
                 break;
         }
+        if(action is "power" or "color" or "brightness" or "effect" or "speed" or "favorite-apply" or "profile-restore")RememberManualProfile();
         controls.Enabled=ble.IsReady&&homeKit==null;connectionPanel.Enabled=homeKit==null;
         return new {state=DesktopState()};
     }

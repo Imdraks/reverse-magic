@@ -26,7 +26,7 @@ async function main() {
   const shutdown = async () => {
     if (stopping) return; stopping = true;
     clearInterval(heartbeat); engine.close(); transport.close();
-    await bridge.stop(); process.exit(0);
+    await engine.settle();await bridge.stop(); process.exit(0);
   };
   process.stdin.on('close', shutdown);
   process.on('SIGINT', shutdown); process.on('SIGTERM', shutdown);

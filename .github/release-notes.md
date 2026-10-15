@@ -1,15 +1,14 @@
-Lantern Bridge dispose maintenant d’un **gestionnaire graphique multi-éclairages Windows et Linux / Raspberry Pi**.
+Cette mise à jour conserve le **dernier profil confirmé** et évite de changer la lumière à l’ouverture ou à l’arrêt du pont.
 
-- **Assistant d’ajout** pour Magic Lantern Bluetooth, éclairages LSC / Tuya LAN et relais Shelly Gen 1 utilisés pour la lumière. Noms, pièces, test de connexion et inspection DP LSC en lecture seule ; pas de récupération automatique des clés ou de balayage Wi-Fi.
-- **Tableau de bord par pièce** : disponibilité, dernière connexion de la session, commandes individuelles et de groupe, fonctions adaptées aux profils.
-- **Règle Maison conservée** : les commandes directes, ajouts, modifications, suppressions, diagnostics matériels et restaurations sont bloqués pendant le mode Maison, dans l’interface et côté programme. Pour ajouter une lampe : désactiver Maison, ajouter puis réactiver. Le même pont conserve son appairage.
-- **Réactivation fiable** : processus HomeKit neuf à chaque activation ; configuration et appairages relus depuis le stockage.
-- **Sauvegardes chiffrées** AES-256-GCM / scrypt : configuration, identifiants locaux et identité Maison ; restauration validée avec conservation de l’installation précédente. Phrase de passe de 12 caractères minimum.
-- **Démarrage automatique** du projet de l’interface à l’ouverture de session Windows/Linux. Export d’un service utilisateur pour un Pi sans écran ; installation et maintien du service au boot décrits dans `docs/DESKTOP.md`.
-- Journal de session et parcours de mise à jour guidé. L’installateur conserve les données utilisateur et le choix du pont à démarrer.
+- **Arrêt passif** : quitter Lantern ou arrêter Maison ne commande ni extinction ni réinitialisation. Le premier contact Magic Lantern n’envoie plus de valeur par défaut et ne rejoue plus un ancien profil automatiquement.
+- **Mémoire locale par éclairage** : couleur/blanc, luminosité et état allumé/éteint pour LSC/Tuya et Shelly ; couleur ou animation, luminosité et vitesse dans le module manuel Magic Lantern.
+- **Écritures durables** : fichiers remplacés atomiquement et synchronisés sur disque ; une écriture déjà confirmée est mémorisée même si l’arrêt commence avant la fin de sa sauvegarde.
+- **Une reconnexion ne remplace pas le profil** par les réglages de démarrage du firmware. Une IP ou clé renouvelée ne supprime pas un profil dont les fonctions restent compatibles.
+- **Rétablir le profil** : rappel explicite depuis l’interface, Maison désactivé. Le verrou Maison est conservé. Le mode blanc/couleur LSC est respecté ; une scène propriétaire non restituable est signalée.
+- Les profils du pont graphique sont inclus dans ses sauvegardes chiffrées. Les profils et fichiers existants illisibles sont conservés, avec un avertissement.
 
-**Télécharger** `LanternDirect-Setup.exe` sous Windows, ou le ZIP portable complet ; `LanternDirect-Linux-arm64.tar.gz` pour Raspberry Pi OS 64 bits, `LanternDirect-Linux-x64.tar.gz` pour PC Linux. Quitter Lantern et arrêter ses services avant la mise à jour. Guide : `docs/DESKTOP.md` dans les paquets.
+**Limite matérielle** : la mémoire de Lantern ne modifie pas le firmware des ampoules. Sans alimentation, leur conservation autonome de la couleur et leur éventuelle réinitialisation après des coupures rapides dépendent du modèle. Aucun DP de mémoire/reset n’est supposé, aucune séquence de coupures n’est réalisée. Si une réinitialisation efface le Wi-Fi ou la clé locale, rétablir la connexion avant de rappeler le profil. Un pont éteint ne peut pas restaurer une ampoule à distance.
 
-Le module Magic Lantern et son ancien pont individuel restent disponibles avec leurs données. Le nouveau gestionnaire a une identité et un stockage distincts : il n’importe pas automatiquement un `bridge.json` du terminal ni l’appairage individuel d’une LED. Les pièces Lantern ne synchronisent pas les pièces Apple Maison. Le journal est limité à la session. Les clés locales sont stockées dans le profil utilisateur ; elles sont chiffrées dans les sauvegardes exportées.
+Tests avec véritables échanges HomeKit et un émulateur Tuya chiffré 3.5 : arrêt de tous les processus, changement du profil du firmware simulé, reprise sans commande automatique, puis restauration de couleur/blanc. Les appareils physiques et la référence Action 3208075 restent à vérifier sur matériel. Guide : `docs/DESKTOP.md`.
 
-Le projet reste consacré à l’éclairage. LSC nécessite une IP, une version Tuya, un profil DP et des identifiants valides ; BLE/Mesh/Zigbee et produits cloud seul ne sont pas intégrés au driver LAN. La référence Action 3208075 et les appareils physiques restent à valider sur matériel. Les tests utilisent de vrais échanges HomeKit, des appareils HTTP/Tuya simulés et le parcours graphique complet ; ils ne certifient pas toute une gamme commerciale.
+Téléchargements : `LanternDirect-Setup.exe` pour Windows ; ZIP portable complet ; paquets Linux x64 et Raspberry Pi ARM64. Arrêter les ponts et quitter Lantern avant de mettre à jour. Données et appairages existants conservés.

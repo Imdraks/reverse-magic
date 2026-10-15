@@ -37,7 +37,7 @@ for(const version of ['3.1','3.3','3.4','3.5'])test(`LSC actual Tuya TCP ${versi
   const fixture=await new TuyaDeviceFixture(version,{...modern,1:true,2:true}).start();
   const light=new LscTuya(options(fixture));
   try{
-    assert.equal((await light.read()).on,true);assert.deepEqual(fixture.writes,[]);
+    assert.equal((await light.read()).on,true);assert.equal(light.profileMode,'white');assert.deepEqual(fixture.writes,[]);
     const diagnostic=await light.probe();assert.deepEqual(diagnostic.candidates,['rgbcct-v2']);assert.doesNotMatch(JSON.stringify(diagnostic),/0123456789abcdef|test_device/);
     await light.apply({hue:120,saturation:100,brightness:35});assert.equal(fixture.dps[24],'007803e8015e');
     assert.equal(fixture.dps[21],'colour');assert.equal(fixture.dps[20],true);
@@ -114,4 +114,37 @@ test('encrypted HomeKit bridge publishes only lighting functions appropriate to 
     await client.setCharacteristics({[key('white','00000008-')]:70});assert.equal(fixture.dps[122],700);assert.equal(fixture.dps[120],true);
     await client.close();client=undefined;
   }finally{if(client)await client.close();await gateway.stop();await fixture.close();await fs.rm(directory,{recursive:true,force:true});}
+});
+
+test('LSC last confirmed colour survives all bridge processes stopping and a simulated bulb power cycle',{timeout:20000},async()=>{
+  const {DesktopManager}=require('../../gateway/desktop-manager');
+  const fixture=await new TuyaDeviceFixture('3.5',modern).start();
+  const directory=await fs.mkdtemp(path.join(os.tmpdir(),'lantern-lsc-memory-'));
+  let manager=await new DesktopManager(directory).init();
+  try{
+    const saved=await manager.command('save-device',{name:'Lampe mémoire',adapter:'lsc-tuya-light',options:options(fixture)}),id=saved.devices[0].id;
+    assert.equal((await manager.command('apply',{id,patch:{on:true,hue:120,saturation:80,brightness:35}})).results[0].ok,true);
+    const remembered=(await manager.snapshot()).devices[0].profile;
+    assert.equal(remembered.mode,'colour');assert.equal(remembered.state.hue,120);
+    const beforeClose=fixture.writes.length;await manager.close();assert.equal(fixture.writes.length,beforeClose,'closing Lantern must send no light command');
+    // Firmware changed its state while every Lantern service was stopped.
+    Object.assign(fixture.dps,{20:true,21:'white',22:1000,23:1000,24:'0000000003e8'});
+    manager=await new DesktopManager(directory).init();
+    assert.deepEqual((await manager.snapshot()).devices[0].profile,remembered);
+    await manager.command('test-device',{id});assert.equal(fixture.writes.length,beforeClose,'reconnection only reads, never toggles power');
+    assert.deepEqual((await manager.snapshot()).devices[0].profile,remembered,'firmware defaults must not overwrite the remembered profile');
+    assert.equal((await manager.command('restore-profile',{id})).results[0].ok,true);
+    assert.equal(fixture.dps[21],'colour');assert.equal(fixture.dps[24],encodeColor(120,80,35,'hsv'));assert.equal(fixture.dps[20],true);
+    assert.equal(fixture.writes.length,beforeClose+1,'one confirmed restoration, no off/on sequence');
+    assert.ok(fixture.writes.every(command=>command[20]!==false),'restoring a lit profile must never create an off pulse');
+    assert.equal(fixture.reusedNonces,0);
+    assert.equal((await manager.command('apply',{id,patch:{colorTemperature:300,brightness:55}})).results[0].ok,true);
+    const white=(await manager.snapshot()).devices[0].profile;assert.equal(white.mode,'white');const whiteDp=fixture.dps[23];
+    Object.assign(fixture.dps,{21:'colour',22:1000,23:0});
+    await manager.command('test-device',{id});assert.equal((await manager.snapshot()).devices[0].profile.mode,'white');
+    assert.equal((await manager.command('restore-profile',{id})).results[0].ok,true);assert.equal(fixture.dps[21],'white');assert.ok(Math.abs(fixture.dps[23]-whiteDp)<=1);
+    const device=(await manager.snapshot()).devices[0];
+    await manager.command('save-device' ,{...device,options:{...device.options,ip:'192.168.1.99'}});
+    assert.equal((await manager.snapshot()).devices[0].profile.state.hue,120,'changing an IP preserves the saved profile');
+  }finally{await manager.close();await fixture.close();await fs.rm(directory,{recursive:true,force:true});}
 });

@@ -19,12 +19,14 @@ function validatePatch(patch) {
 }
 
 class LightEngine extends EventEmitter {
-  constructor(transport, { state = DEFAULT_STATE, save = async () => {}, delay = 25 } = {}) {
+  constructor(transport, { state = DEFAULT_STATE, hasSavedState = state !== DEFAULT_STATE, save = async () => {}, delay = 25 } = {}) {
     super();
     validatePatch(state);
     this.state = { ...DEFAULT_STATE, ...state };
     this.transport = transport;
     this.save = save;
+    this.hasSavedState = hasSavedState;
+    this.connectedBefore = false;
     this.delay = delay;
     this.online = false;
     this.pending = [];
@@ -51,11 +53,14 @@ class LightEngine extends EventEmitter {
         const status = await this.transport.status();
         if (!status.connected) { this.availability(false); return; }
         if (!this.online) {
-          // Reapply the last requested state after reconnect. First setup starts off.
-          await this.transport.apply({ ...this.state });
+          // Opening a bridge observes connectivity without changing a controller
+          // that may still be running its last colour or animation autonomously.
+          const replay=this.hasSavedState&&this.connectedBefore;
+          if(replay)await this.transport.apply({ ...this.state });
           if (this.closed) return;
+          this.connectedBefore=true;
           this.availability(true);
-          this.emit('state', { ...this.state });
+          if(replay)this.emit('state', { ...this.state });
         }
       } catch { this.availability(false); }
     }).finally(() => { this.refreshing = undefined; });
@@ -96,10 +101,11 @@ class LightEngine extends EventEmitter {
         const next = { ...this.state, ...patch };
         if (next.hue === 360) next.hue = 0;
         await this.transport.apply(next);
-        if (this.closed) throw new BridgeUnavailable('Bridge stopped');
         this.state = next;
+        this.hasSavedState = true;
+        try { await this.save({ ...next });this.persistenceError=false; } catch { this.persistenceError=true;this.emit('persistence-warning'); }
+        if (this.closed) throw new BridgeUnavailable('Bridge stopped');
         this.availability(true);
-        try { await this.save({ ...next }); } catch { this.emit('persistence-warning'); }
         this.emit('state', { ...next });
       });
       for (const waiter of waiters) waiter.resolve();
@@ -117,6 +123,7 @@ class LightEngine extends EventEmitter {
     this.pendingPatch = {};
     this.availability(false);
   }
+  settle() { return this.tail; }
 }
 
 module.exports = { LightEngine, BridgeUnavailable, DEFAULT_STATE, validatePatch };

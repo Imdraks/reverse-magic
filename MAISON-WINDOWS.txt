@@ -23,9 +23,9 @@ Aucune installation de Node.js ou de .NET nécessaire.
    autres applications Bluetooth sur les téléphones : une connexion à la fois.
 3. Lancer LanternDirect.exe, rechercher les LED et connecter le contrôleur.
    Vérifier rouge, vert et bleu avec les commandes Windows.
-4. Dans la section Maison, cliquer sur « Activer le pont ». À la première activation, les LED sont
-   éteintes pour partir d'un état connu. Les réglages Maison sont ensuite
-   conservés et réappliqués après une reconnexion Bluetooth.
+4. Dans la section Maison, cliquer sur « Activer le pont ». L’ouverture du pont ne modifie pas les LED. Les réglages confirmés sont
+   mémorisés et peuvent être réappliqués après une perte/reprise Bluetooth
+   dans la même session. Arrêter le pont ne les éteint pas.
 5. Autoriser node.exe dans le pare-feu Windows pour les réseaux PRIVÉS.
    PC et iPhone doivent être sur le même réseau local, sans isolation des
    clients Wi-Fi. HomeKit utilise TCP 51827 et la découverte mDNS UDP 5353.

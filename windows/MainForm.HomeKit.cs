@@ -65,6 +65,7 @@ public sealed partial class MainForm
                     brightness.Value = light.GetProperty("brightness").GetInt32();
                     var snapshot = new HomeKitLightState(true, brightness.Value, light.GetProperty("hue").GetDouble(), light.GetProperty("saturation").GetDouble()).Frames()[1];
                     selectedColor = Color.FromArgb(snapshot[5], snapshot[4], snapshot[6]);
+                    RememberManualProfile(false);
                     PushDesktop(); break;
                 case "warning": homeStatus.Text = message.GetProperty("message").GetString(); break;
             }

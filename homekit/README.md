@@ -21,3 +21,7 @@ dotnet run --project windows-tests/ProtocolChecks.csproj
 ```
 
 Les tests Linux exercent aussi le canal RPC, les commandes chiffrées jusqu’aux trames GRB et la fermeture du processus ; voir `linux/tests/`. Les tests Node vérifient un véritable échange HomeKit chiffré avec un client indépendant, l’accès interdit sans appairage, le code incorrect, les couleurs, l’état hors ligne, la persistance, le QR et la fermeture du serveur quand son parent ferme stdin. Seul le transport BLE est simulé. Le paquet Windows est construit avec `scripts/package-homekit.py`, qui vérifie le SHA-256 du runtime officiel et installe les dépendances de production avec le verrou npm.
+
+## Mémoire et arrêt
+
+L’ouverture du pont n’éteint plus le contrôleur et ne rejoue plus sa couleur au premier contact. Les dernières consignes enregistrées restent disponibles ; le contrôleur continue son profil de manière autonome tant qu’il est alimenté. Après perte/reprise BLE dans la même session, le moteur peut restaurer une consigne connue. La fermeture attend la fin d’une écriture de profil déjà confirmée ; elle n’envoie aucune commande lumineuse. Voir [le guide de mémoire](../docs/DESKTOP.md#conserver-le-profil-et-arrêter-sans-changer-la-lumière) pour la différence avec la mémoire du firmware et les coupures électriques.

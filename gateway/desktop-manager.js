@@ -11,6 +11,7 @@ const {LIGHTS}=require('./adapters/lsc-profiles');
 const {validateFields}=require('./observed-engine');
 const {validatePatch,DEFAULT_STATE}=require('../homekit/light-engine');
 const {loadLightStorage}=require('../homekit/storage');
+const {ProfileStore}=require('./profile-store');
 const scrypt=promisify(crypto.scrypt);
 const MAX=2*1024*1024;
 class UserError extends Error {}
@@ -46,12 +47,20 @@ class DesktopManager {
   async editable(project){if(this.running||await this.external(project))fail('Maison est actif. Désactivez Maison avant de modifier les appareils ou d’utiliser les commandes directes.');}
   event(message){this.logs.push({time:this.clock(),message});if(this.logs.length>100)this.logs.shift();}
   environment(project){for(const [key,value] of Object.entries(project.secrets))process.env[key]=value;}
-  observe(rows){for(const row of rows){const previous=this.health.get(row.id)||{};this.health.set(row.id,{online:row.online,lastConnection:row.online&&!previous.online?this.clock():previous.lastConnection||null});if(row.online!==previous.online)this.event(row.online?'Éclairage connecté.':'Éclairage indisponible.');}}
+  observe(rows){for(const row of rows){const previous=this.health.get(row.id)||{};this.health.set(row.id,{online:row.online,lastConnection:row.online&&!previous.online?this.clock():previous.lastConnection||null,profileWarning:Boolean(row.profileWarning)});if(row.online!==previous.online)this.event(row.online?'Éclairage connecté.':'Éclairage indisponible.');if(row.profileWarning&&!previous.profileWarning)this.event('Réglage appliqué, mais profil non enregistré. Vérifiez le stockage.');}}
   async snapshot(){const project=await this.load(),external=!this.running&&await this.external(project);return {
     available:true,active:Boolean(this.running||external),external,config:project.config,rooms:project.rooms,
-    devices:project.config.devices.map(device=>({...device,room:project.rooms[device.id]||'Sans pièce',...(this.health.get(device.id)||{online:null,lastConnection:null}),fields:Object.keys(adapters[device.adapter].describe?.(device.options)?.fields||DEFAULT_STATE)})),
+    devices:await Promise.all(project.config.devices.map(async device=>({...device,room:project.rooms[device.id]||'Sans pièce',...(this.health.get(device.id)||{online:null,lastConnection:null}),fields:Object.keys(adapters[device.adapter].describe?.(device.options)?.fields||DEFAULT_STATE),...await this.profileSnapshot(project,device)}))),
     logs:this.logs,profiles:Object.keys(LIGHTS),directory:this.directory,serviceUnit:this.serviceUnit(),
   };}
+  async profileSnapshot(project,device){
+    try{
+      const directory=path.join(this.storage(project),'devices',device.id);
+      if(adapters[device.adapter].describe){const profile=await new ProfileStore(directory,device).load();return {profile:profile?{...profile,signature:undefined,restorable:profile.mode!=='unsupported'}:null};}
+      const saved=await loadLightStorage(directory);if(!saved.hasSavedState)return {profile:null};
+      const info=await fs.stat(path.join(directory,'state.json'));return {profile:{state:saved.state,mode:'colour',source:'command',savedAt:info.mtime.toISOString(),restorable:true}};
+    }catch{return {profile:null,profileError:'Profil mémorisé illisible. Le fichier existant est conservé.'};}
+  }
   build(data,project){
     const existing=project.config.devices.find(d=>d.id===data.id);
     const device={id:existing?.id||'lumiere-'+crypto.randomBytes(6).toString('hex'),name:label(data.name),adapter:data.adapter,options:structuredClone(data.options||{})};
@@ -68,11 +77,11 @@ class DesktopManager {
     project.config.devices.push(device);const room=label(data.room||'');if(room)project.rooms[device.id]=room;else delete project.rooms[device.id];
     validateConfig(project.config);return device;
   }
-  async test(device,project,probe=false){
+  async test(device,project,probe=false,remember=true){
     this.environment(project);let adapter;
     try{adapter=this.adapterFactory(device);this.activeAdapters.add(adapter);let result;
       if(probe&&device.adapter==='lsc-tuya-light')result=await adapter.probe();
-      else if(adapter.read)result=await adapter.read();
+      else if(adapter.read){result=await adapter.read();if(remember)await new ProfileStore(path.join(this.storage(project),'devices',device.id),device).save(result,{mode:adapter.profileMode});}
       else {await this.connected(adapter);result={connected:true};}
       return {ok:true,details:probe?result:undefined,message:probe?'Diagnostic terminé ; les profils proposés restent à confirmer.':'Connexion et lecture réussies. Aucune commande lumineuse envoyée.'};
     }catch(error){if(error instanceof UserError)throw error;fail('Éclairage inaccessible. Vérifiez son alimentation, son adresse, les identifiants et le profil.');}
@@ -106,13 +115,19 @@ class DesktopManager {
       }else if(action==='settings'){
         project.config.name=label(data.name);if(!project.config.name)fail('Nom du pont requis.');await this.save(project);
       }else if(action==='test-device'){
-        const device=data.draft?this.build(data.draft,project):project.config.devices.find(d=>d.id===data.id);if(!device)fail('Éclairage introuvable.');return this.test(device,project,Boolean(data.probe));
+        const device=data.draft?this.build(data.draft,project):project.config.devices.find(d=>d.id===data.id);if(!device)fail('Éclairage introuvable.');return this.test(device,project,Boolean(data.probe),!data.draft);
       }else if(action==='refresh-devices'){
         await this.batch(project.config.devices,async device=>{try{await this.test(device,project);this.observe([{id:device.id,online:true}]);}catch{this.observe([{id:device.id,online:false}]);}});
       }else if(action==='apply-group'){
         const devices=project.config.devices.filter(d=>data.room===undefined||(project.rooms[d.id]||'')===data.room);
         if(typeof data.on!=='boolean'||!devices.length)fail('Choisissez une pièce et une commande.');
         return {results:await this.batch(devices,device=>this.apply(device,project,{on:data.on}))};
+      }else if(action==='restore-profile'){
+        const device=project.config.devices.find(d=>d.id===data.id);if(!device)fail('Éclairage introuvable.');
+        const directory=path.join(this.storage(project),'devices',device.id);let patch;
+        if(adapters[device.adapter].describe){const store=new ProfileStore(directory,device),record=await store.load();if(!record)fail('Aucun profil mémorisé pour cet éclairage.');patch=store.patch(record);}
+        else{const saved=await loadLightStorage(directory);if(!saved.hasSavedState)fail('Aucun profil mémorisé pour cet éclairage.');patch=saved.state;}
+        return {results:[await this.apply(device,project,patch)]};
       }else if(action==='apply'){
         const device=project.config.devices.find(d=>d.id===data.id);if(!device)fail('Éclairage introuvable.');return {results:[await this.apply(device,project,data.patch)]};
       }else if(action==='backup')return this.backup(project,data.password);
@@ -135,7 +150,7 @@ class DesktopManager {
       const fields=adapters[device.adapter].describe?.(device.options)?.fields;
       if(fields)validateFields(fields,patch,true);else validatePatch(patch);
       if(this.closed)fail('Gestionnaire arrêté.');this.environment(project);adapter=this.adapterFactory(device);this.activeAdapters.add(adapter);
-      if(fields)await adapter.apply(patch);
+      if(fields){const confirmed=await adapter.apply(patch);await new ProfileStore(path.join(this.storage(project),'devices',device.id),device).save(confirmed,{commanded:true,mode:adapter.profileMode});}
       else{
         const stored=await loadLightStorage(path.join(this.storage(project),'devices',device.id));
         await this.connected(adapter);
