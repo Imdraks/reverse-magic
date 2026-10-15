@@ -1,6 +1,6 @@
 # Lantern Bridge — installer le pont chez soi
 
-Lantern Bridge regroupe plusieurs appareils dans Apple Maison, avec un seul appairage. Le PC Windows ou Raspberry Pi/Linux reste allumé, sur le réseau de l’iPhone et à portée des appareils Bluetooth. Aucun logiciel supplémentaire sur l’iPhone : utilisez Maison. Pour l’accès depuis l’extérieur et certaines automatisations, Apple exige aussi un concentrateur HomePod ou Apple TV.
+Lantern Bridge regroupe plusieurs éclairages dans Apple Maison, avec un seul appairage. Le PC Windows ou Raspberry Pi/Linux reste allumé, sur le réseau de l’iPhone et à portée des appareils Bluetooth. Aucun logiciel supplémentaire sur l’iPhone : utilisez Maison. Pour l’accès depuis l’extérieur et certaines automatisations, Apple exige aussi un concentrateur HomePod ou Apple TV.
 
 Cette version établit le cœur multi-appareils. Sa configuration passe par un fichier et le terminal. Le GUI conserve les commandes et favoris du module Magic Lantern ; son ancien bouton Maison publie encore une lampe individuelle. Ce bouton et le nouveau pont ne doivent pas posséder les mêmes LED simultanément.
 
@@ -9,13 +9,13 @@ Cette version établit le cœur multi-appareils. Sa configuration passe par un f
 | Adaptateur | Connexion | Fonctions Maison | Limites |
 |---|---|---|---|
 | `magic-lantern-ble` | Bluetooth LE FFF0/FFF3 | Allumage, luminosité, couleur | Contrôleurs compatibles avec le protocole documenté, pas tous les rubans Bluetooth ; correction GRB conservée |
-| `shelly-gen1-relay` | API HTTP locale Shelly Gen 1 | Interrupteur marche/arrêt par canal | Mode relais uniquement ; pas Gen 2/3, volet ou variateur |
+| `shelly-gen1-relay` | API HTTP locale Shelly Gen 1 pour éclairage | Interrupteur marche/arrêt par canal | Mode relais uniquement ; pas Gen 2/3, volet ou variateur |
 
-Chaque nouveau protocole demande un adaptateur et des essais. Zigbee exige une radio/passerelle adaptée ; un appareil limité au cloud peut nécessiter une API et des identifiants. Le pont ne peut pas rendre automatiquement compatible un produit dont le protocole est inaccessible. Il n’est pas certifié Apple.
+Le périmètre est exclusivement l’éclairage. [LSC Smart Connect / Tuya LAN](LSC.md) fournit des profils de lumière blanche/RGB/CCT/dimmer et un diagnostic en lecture seule. Chaque nouveau protocole demande un adaptateur et des essais. Zigbee exige une radio/passerelle adaptée ; un appareil limité au cloud peut nécessiter une API et des identifiants. Le pont ne peut pas rendre automatiquement compatible un produit dont le protocole est inaccessible. Il n’est pas certifié Apple.
 
 ## Installation
 
-Utilisez les paquets complets de la [release](https://github.com/Imdraks/reverse-magic/releases/tag/v0.6.0). Les noms de fichiers `LanternDirect` sont conservés pour faciliter la mise à jour et protéger les données existantes.
+Utilisez les paquets complets de la [release](https://github.com/Imdraks/reverse-magic/releases/tag/v0.7.0). Les noms de fichiers `LanternDirect` sont conservés pour faciliter la mise à jour et protéger les données existantes.
 
 Sur Linux/Pi 64 bits : extraire le paquet ARM64 (Pi) ou x64 (PC), installer `python3-venv` et BlueZ, puis lancer `./install.sh`. Les détails radio restent dans [le guide Linux](../linux/README.md). Le pont HTTP seul n’utilise pas la radio Bluetooth.
 

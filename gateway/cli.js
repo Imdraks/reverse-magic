@@ -7,10 +7,12 @@ const { adapters } = require('./registry');
 const { validateConfig } = require('./config');
 function args(values) {
   const result = { command: values.shift() || 'help', config: path.resolve('bridge.json') };
-  if (!['help','init','check','adapters','run','pairing'].includes(result.command)) throw new Error('Commande inconnue.');
+  if (!['help','init','check','adapters','run','pairing','probe'].includes(result.command)) throw new Error('Commande inconnue.');
+  const connectionOptions={'--ip':'ip','--port':'port','--device-id-env':'deviceIdEnv','--local-key-env':'localKeyEnv','--version':'version'};
   for (let i=0;i<values.length;i+=2) {
-    if (!['--config','--data-dir'].includes(values[i]) || !values[i+1]) throw new Error('Arguments invalides.');
-    result[values[i]==='--config'?'config':'dataDirectory'] = path.resolve(values[i+1]);
+    if(result.command==='probe'&&Object.hasOwn(connectionOptions,values[i])&&values[i+1]){result.connection||={};result.connection[connectionOptions[values[i]]]=values[i]==='--port'?Number(values[i+1]):values[i+1];continue;}
+    if (!['--config','--data-dir','--device'].includes(values[i]) || !values[i+1]) throw new Error('Arguments invalides.');
+    if(values[i]==='--device')result.device=values[i+1];else result[values[i]==='--config'?'config':'dataDirectory'] = path.resolve(values[i+1]);
   }
   return result;
 }
@@ -21,7 +23,7 @@ function directory(config, options) {
 async function main() {
   const options = args(process.argv.slice(2));
   if (options.command==='help') {
-    console.log('Lantern Bridge — pont HomeKit multi-appareils\nCommandes : init, adapters, check, run, pairing\nOptions : --config bridge.json, --data-dir DOSSIER\nGuide : docs/GATEWAY.md'); return;
+    console.log('Lantern Bridge — pont HomeKit multi-éclairages\nCommandes : init, adapters, check, run, pairing, probe\nOptions : --config bridge.json, --data-dir DOSSIER\nInspection LSC : probe --config bridge.json --device IDENTIFIANT\nGuide : docs/GATEWAY.md'); return;
   }
   if (options.command==='adapters') {
     for (const [id,adapter] of Object.entries(adapters)) console.log(`${id} — ${adapter.name} · ${adapter.transport} · ${adapter.capability}`);
@@ -31,8 +33,21 @@ async function main() {
     await fs.writeFile(options.config, JSON.stringify({version:1,id:'maison',name:'Lantern Bridge',port:51828,devices:[]},null,2)+'\n',{flag:'wx',mode:0o600});
     console.log('Configuration créée, sans appareil. Ajoutez vos appareils selon docs/GATEWAY.md.'); return;
   }
+  if(options.command==='probe'&&options.connection){
+    if(options.device)throw new Error('Choisissez une connexion directe ou un appareil de configuration.');
+    require('./adapters/lsc-profiles').validateCommon(options.connection);
+    const adapter=new (require('./adapters/lsc-tuya').LscTuya)(options.connection);
+    try{console.log(JSON.stringify(await adapter.probe(),null,2));}finally{await adapter.close();}return;
+  }
   const config = validateConfig(JSON.parse(await fs.readFile(options.config,'utf8')));
   if (options.command==='check') { console.log(`Configuration valide : ${config.devices.length} appareil(s). Aucune connexion effectuée.`); return; }
+  if(options.command==='probe'){
+    const device=config.devices.find(item=>item.id===options.device);
+    if(!device||!device.adapter.startsWith('lsc-tuya-'))throw new Error('Appareil LSC requis.');
+    const adapter=adapters[device.adapter].create(device,{});
+    try{console.log(JSON.stringify(await adapter.probe(),null,2));}finally{await adapter.close();}
+    return;
+  }
   const dataDirectory = directory(config,options);
   if (options.command==='pairing') {
     const identity = JSON.parse(await fs.readFile(path.join(dataDirectory,'identity.json'),'utf8'));

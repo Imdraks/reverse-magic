@@ -14,6 +14,8 @@ $nodeVersion = & (Join-Path $root 'node.exe') --version
 if ($nodeVersion -ne 'v24.19.0') { throw "Unexpected bundled Node runtime" }
 & (Join-Path $root 'node.exe') (Join-Path $root 'gateway\cli.js') check --config (Join-Path $root 'gateway\bridge.example.json')
 if ($LASTEXITCODE -ne 0) { throw 'Packaged gateway configuration check failed' }
+& (Join-Path $root 'node.exe') -e 'const path=require("node:path");const root=process.argv[1];const registry=require(path.join(root,"gateway/registry"));if(!registry.adapters["lsc-tuya-light"])throw Error("LSC adapter missing");const tuya=require(path.join(root,"homekit/node_modules/tuyapi"));if(typeof tuya!=="function")throw Error("Tuya runtime missing")' $root
+if ($LASTEXITCODE -ne 0) { throw 'Packaged LSC/Tuya runtime check failed' }
 $workerInfo = [Diagnostics.ProcessStartInfo]::new((Join-Path $root 'LanternDirect.exe'))
 $workerInfo.UseShellExecute = $false
 $workerInfo.CreateNoWindow = $true

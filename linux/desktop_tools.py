@@ -4,13 +4,13 @@ import os
 import re
 import urllib.request
 
-VERSION='0.6.0'
+VERSION='0.7.0'
 def check_updates():
     request=urllib.request.Request('https://api.github.com/repos/Imdraks/reverse-magic/releases?per_page=20',headers={'User-Agent':'LanternDirect/'+VERSION})
     try:
         with urllib.request.urlopen(request,timeout=8) as response:releases=json.load(response)
         versions=[tuple(map(int,x['tag_name'][1:].split('.'))) for x in releases if not x.get('draft') and re.fullmatch(r'v\d+\.\d+\.\d+',x.get('tag_name',''))]
-        latest=max(versions,default=(0,6,0));return dict(current=VERSION,latest='.'.join(map(str,latest)),available=latest>(0,6,0))
+        latest=max(versions,default=(0,7,0));return dict(current=VERSION,latest='.'.join(map(str,latest)),available=latest>(0,7,0))
     except Exception:raise ValueError('Impossible de vérifier les versions. Vos commandes locales restent disponibles ; réessayez avec Internet.') from None
 
 def desktop_entry(root):

@@ -1,8 +1,8 @@
 {
   "name": "lantern-direct-homekit",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
-  "description": "HomeKit IP light accessory backed by the Windows or Linux Bluetooth controller",
+  "description": "Local HomeKit lighting bridge with Bluetooth, HTTP and Tuya LAN adapters",
   "main": "server.js",
   "scripts": {
     "test": "node --test test/*.test.js"
@@ -13,7 +13,8 @@
   "dependencies": {
     "hap-nodejs": "0.14.3",
     "proper-lockfile": "4.1.2",
-    "qrcode": "1.5.4"
+    "qrcode": "1.5.4",
+    "tuyapi": "7.7.1"
   },
   "devDependencies": {
     "hap-controller": "0.10.2"

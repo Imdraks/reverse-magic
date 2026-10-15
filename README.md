@@ -1,16 +1,16 @@
 # Lantern Bridge
 
-**Un pont local sur PC ou Raspberry Pi pour retrouver ses appareils dans Apple Maison.**
+**Un pont local sur PC ou Raspberry Pi pour retrouver ses éclairages dans Apple Maison.**
 
-Le projet évolue vers une passerelle multi-appareils et multi-protocoles. Le PC Windows ou le Pi/Linux reste allumé chez vous, communique avec les produits et les expose à Maison/Siri via HomeKit IP. Un seul appairage pour les accessoires du nouveau pont. Aucune application mobile supplémentaire nécessaire.
+Le projet se concentre sur l’éclairage : ampoules, rubans, luminaires et contrôleurs/dimmers. La passerelle réunit plusieurs protocoles. Le PC Windows ou le Pi/Linux reste allumé chez vous, communique avec les éclairages et les expose à Maison/Siri via HomeKit IP. Un seul appairage pour les accessoires du nouveau pont. Aucune application mobile supplémentaire nécessaire.
 
 ## Installer
 
-[**Télécharger v0.6.0 — base multi-appareils, version de test**](https://github.com/Imdraks/reverse-magic/releases/tag/v0.6.0)
+[**Télécharger v0.7.0 — éclairages LSC/Tuya, version de test**](https://github.com/Imdraks/reverse-magic/releases/tag/v0.7.0)
 
-- **Windows** : [installateur](https://github.com/Imdraks/reverse-magic/releases/download/v0.6.0/LanternDirect-Setup.exe) ou [paquet portable complet](https://github.com/Imdraks/reverse-magic/releases/download/v0.6.0/LanternDirect-Windows-HomeKit.zip).
-- **Raspberry Pi OS 64 bits** : [ARM64](https://github.com/Imdraks/reverse-magic/releases/download/v0.6.0/LanternDirect-Linux-arm64.tar.gz), installation terminal et service sans écran.
-- **PC Linux** : [x64](https://github.com/Imdraks/reverse-magic/releases/download/v0.6.0/LanternDirect-Linux-x64.tar.gz), terminal, service et interface locale.
+- **Windows** : [installateur](https://github.com/Imdraks/reverse-magic/releases/download/v0.7.0/LanternDirect-Setup.exe) ou [paquet portable complet](https://github.com/Imdraks/reverse-magic/releases/download/v0.7.0/LanternDirect-Windows-HomeKit.zip).
+- **Raspberry Pi OS 64 bits** : [ARM64](https://github.com/Imdraks/reverse-magic/releases/download/v0.7.0/LanternDirect-Linux-arm64.tar.gz), installation terminal et service sans écran.
+- **PC Linux** : [x64](https://github.com/Imdraks/reverse-magic/releases/download/v0.7.0/LanternDirect-Linux-x64.tar.gz), terminal, service et interface locale.
 
 Les noms techniques `LanternDirect` et les dossiers de données sont conservés pour faciliter les mises à jour. L’installateur contient Node et le pont ; le runtime .NET est inclus. Sous Linux, installer Python/BlueZ selon [le guide](linux/README.md). WebView2 est nécessaire pour le GUI Windows moderne.
 
@@ -34,9 +34,16 @@ Sous Windows, depuis le dossier installé : `node.exe gateway/cli.js init`, puis
 | Module | Produits/protocole | Fonctions dans Maison |
 |---|---|---|
 | Magic Lantern BLE | Contrôleurs FFF0/FFF3 compatibles avec [le protocole analysé](docs/protocols/magic-lantern.md) | Allumage, luminosité, couleur ; correction GRB |
-| Shelly Gen 1 Relay | Relais avec API HTTP locale `/relay/<canal>` | Marche/arrêt, lecture de l’état physique |
+| Shelly Gen 1 Relay | Relais pour éclairage, API HTTP locale `/relay/<canal>` | Marche/arrêt, lecture de l’état physique |
+| LSC Smart Connect / Tuya LAN | Éclairages Wi-Fi avec schéma DP compatible, Tuya 3.1/3.3/3.4/3.5 | Lumière, luminosité, couleur et blanc réglable selon le profil |
 
-Chaque marque/protocole demande un adaptateur ; Zigbee nécessite par exemple une radio ou passerelle adaptée. Les capteurs, volets, thermostats, MQTT et d’autres générations Shelly ne sont pas encore implémentés. Les effets RGBIC et la musique restent propres au module LED.
+Chaque marque/protocole demande un adaptateur ; Zigbee nécessite par exemple une radio ou passerelle adaptée. Les produits sans rapport avec l’éclairage sont hors périmètre. Les effets RGBIC et la musique restent propres au module LED.
+
+## Éclairage LSC Smart Connect
+
+[Guide LSC, diagnostic et configuration](docs/LSC.md) · [Analyse de l’APK et sources](docs/research/lsc-smart-connect.md)
+
+Le module utilise des profils par famille (blanc, RGB, RGB+CCT, dimmer), sans présumer le schéma de toutes les références. `gateway probe` inspecte un appareil sans le modifier, puis vous choisissez son profil. Identifiant, clé locale et accès LAN sont nécessaires ; ils ne sont pas déduits de l’APK. **La compatibilité de toute la gamme reste un objectif, pas une garantie de cette version.** Les éclairages BLE/Zigbee/cloud seul exigent un autre transport.
 
 ## Données et migration
 

@@ -1,13 +1,11 @@
-Lantern Direct devient **Lantern Bridge**, une base de passerelle locale pour PC Windows ou Linux/Raspberry Pi, destinée à réunir plusieurs produits dans Apple Maison.
+Lantern Bridge se concentre désormais sur **l’éclairage uniquement** : ampoules, rubans, luminaires et contrôleurs/dimmers.
 
-- **Pont multi-appareils** : un appairage chiffré pour plusieurs accessoires, identités stables, stockage privé verrouillé, pannes isolées.
-- **Adaptateurs séparés** : Magic Lantern Bluetooth FFF0/FFF3 et Shelly Gen 1 Relay HTTP local. Un nouveau protocole demande son module ; il ne s’agit pas encore d’une compatibilité automatique avec tous les produits.
-- **Terminal et service** : `./lantern gateway init/check/run/pairing`, registre `adapters`, service Linux/Pi `gateway-service`. Windows utilise le Node fourni avec `gateway/cli.js`.
-- **GUI conservé** : nouvelle présentation Lantern Bridge, commandes et favoris dans le module Magic Lantern. La configuration du pont multi-appareils reste par fichier/terminal.
-- **Nettoyage** : retrait du client mobile, de sa chaîne de compilation et de ses artefacts ; documentation du protocole déplacée dans `docs/protocols/`.
+- **Éclairages LSC Smart Connect / Tuya LAN** : nouveaux profils RGB+CCT, blancs réglables, RGB seul et dimmer. Les fonctions Maison dépendent du profil ; pas de couleur fictive sur une lampe blanche.
+- **Diagnostic local en lecture seule** : `gateway probe` affiche les numéros/types de DP et des profils candidats, sans clé, identifiant ni valeurs et sans appliquer automatiquement une configuration.
+- **Contrôle local** : Tuya 3.1, 3.3, 3.4 et 3.5 via TuyAPI 7.7.1 verrouillé ; clés individuelles par variables d’environnement, aucune récupération de compte LSC depuis l’APK.
+- **État réel** : lecture au démarrage/reconnexion, écritures relues avant validation, sérialisation par appareil. Les workers sont arrêtés à expiration, sans commande tardive.
+- Magic Lantern et les relais Shelly utilisés pour l’éclairage sont conservés, ainsi que leurs identités Maison. Aucun module de prises généralistes ou de capteurs n’est livré.
 
-**Migration** : les anciens favoris et appairages sont conservés. Le nouveau pont a une identité distincte et nécessite un nouvel appairage. Arrêter l’ancien pont avant de lui transférer les mêmes LED. Voir `GUIDE-PONT.md`, inclus ci-dessous.
+**À configurer sur votre PC/Pi** : IP, identifiant, clé locale, version et profil DP de chaque éclairage. Voir `docs/LSC.md` dans les paquets. La référence Action 3208075 fournie reste à essayer sur matériel : ni l’APK ni les tests n’établissent son schéma exact. La compatibilité de tous les éclairages LSC reste un objectif ; les transports BLE/Zigbee et produits cloud seul ne sont pas intégrés à ce driver LAN.
 
-Les noms de fichiers LanternDirect sont conservés pour les mises à jour. Le PC/Pi doit rester allumé, sur le réseau de l’iPhone et à portée des appareils. Les capacités actuelles sont lampes RGB et interrupteurs ; Shelly Gen 2/3, volets, thermostats et autres protocoles restent à développer.
-
-Validation : véritable client HomeKit chiffré face à plusieurs accessoires, relais HTTP de test, isolation hors ligne et absence de commande au démarrage/reconnexion du relais ; worker BLE Linux par stdio, trames GRB et annulation ; paquets natifs x64/ARM64, parcours Chromium, installation/lancement/désinstallation Windows et conservation des données. Les appareils radio et relais physiques restent à confirmer.
+Analyse documentée de l’APK LSC 2.0.7 et deux méthodes DP décompilées ; aucune APK, clé ou source propriétaire complète dans les fichiers publics. Tests contre des émulateurs TCP indépendants avec chiffrement/négociation Tuya et un vrai client HomeKit ; tests GUI, paquets Linux x64/ARM64 et installateur Windows. Le rendu sur appareils physiques reste à confirmer.

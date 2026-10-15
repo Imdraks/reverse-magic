@@ -29,7 +29,7 @@ async function rpc(action,data={}){
   const result=await response.json();if(!response.ok||!result.ok)throw new Error(result.error||'Opération impossible.');return result.result;
 }
 let state={connected:false,bridge:false,on:false,brightness:100,rgb:'FFB340',mic:false,devices:[],effects:[],platform:'linux'},pending=false,busyAction='',toastTimer,activePage='gateway',effectSignature='';
-const titles={gateway:['Le pont','Votre maison, réunie.','Un pont local. Des appareils qui se retrouvent dans Maison.'],overview:['Vue d’ensemble','La lumière, simplement.','Un peu de couleur. Une autre atmosphère.'],ambience:['Ambiances','À chaque instant, sa couleur.','Choisissez une teinte. Laissez le reste s’effacer.'],home:['Maison','Tout naturellement, ensemble.','Votre lumière trouve sa place dans Maison.'],devices:['Appareils','Le début d’une belle connexion.','Retrouvez vos LED et rapprochez les choses.']};
+const titles={gateway:['Le pont','Vos lumières, réunies.','Un pont local pour vos éclairages et Maison.'],overview:['Vue d’ensemble','La lumière, simplement.','Un peu de couleur. Une autre atmosphère.'],ambience:['Ambiances','À chaque instant, sa couleur.','Choisissez une teinte. Laissez le reste s’effacer.'],home:['Maison','Tout naturellement, ensemble.','Votre lumière trouve sa place dans Maison.'],devices:['Appareils','Le début d’une belle connexion.','Retrouvez vos LED et rapprochez les choses.']};
 function openPage(page){
   activePage=page;document.querySelectorAll('.page').forEach(el=>el.classList.toggle('active',el.id==='page-'+page));
   document.querySelectorAll('.nav-item').forEach(el=>{el.classList.toggle('active',el.dataset.page===page);el.setAttribute('aria-current',el.dataset.page===page?'page':'false');});

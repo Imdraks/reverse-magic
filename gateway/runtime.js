@@ -1,7 +1,7 @@
 'use strict';
 const path = require('node:path');
 const fs = require('node:fs/promises');
-const { Bridge, Accessory, Service, Characteristic, uuid, Categories, MDNSAdvertiser, HAPStorage, HapStatusError, HAPStatus } = require('../homekit/node_modules/hap-nodejs');
+const { Bridge, Accessory, Service, Characteristic, uuid, Categories, MDNSAdvertiser, HAPStorage } = require('../homekit/node_modules/hap-nodejs');
 const lockfile = require('../homekit/node_modules/proper-lockfile');
 const QRCode = require('../homekit/node_modules/qrcode');
 const { validateConfig } = require('./config');
@@ -9,7 +9,8 @@ const { adapters } = require('./registry');
 const { attachLight } = require('../homekit/accessory');
 const { LightEngine } = require('../homekit/light-engine');
 const { loadIdentity, loadLightStorage } = require('../homekit/storage');
-const { SwitchEngine } = require('./switch-engine');
+const {ObservedEngine}=require('./observed-engine');
+const {attachObserved}=require('./observed-accessory');
 class Gateway {
   constructor(config, directory, { adapterFactory, bind, onStatus = () => {} } = {}) {
     this.config = validateConfig(config); this.directory = path.resolve(directory); this.adapterFactory = adapterFactory;
@@ -27,27 +28,21 @@ class Gateway {
         .setCharacteristic(Characteristic.Manufacturer, 'Lantern Bridge')
         .setCharacteristic(Characteristic.Model, 'HomeKit Bridge')
         .setCharacteristic(Characteristic.SerialNumber, this.config.id)
-        .setCharacteristic(Characteristic.FirmwareRevision, '0.6.0');
+        .setCharacteristic(Characteristic.FirmwareRevision, '0.7.0');
       for (const device of this.config.devices) {
         const definition = adapters[device.adapter];
         const adapter = this.adapterFactory ? this.adapterFactory(device) : definition.create(device, {});
         const entry = { id: device.id, adapter }; this.devices.push(entry);
-        const engine = definition.capability === 'rgb-light' ? new LightEngine(adapter, await loadLightStorage(path.join(this.directory, 'devices', device.id))) : new SwitchEngine(adapter);
+        const description=definition.describe?.(device.options);
+        const engine = description?new ObservedEngine(adapter,description.fields):new LightEngine(adapter, await loadLightStorage(path.join(this.directory,'devices',device.id)));
         entry.engine = engine;
         const accessory = new Accessory(device.name, uuid.generate(`LanternBridge:device:${device.id}`));
         accessory.getService(Service.AccessoryInformation)
           .setCharacteristic(Characteristic.Manufacturer, definition.manufacturer)
           .setCharacteristic(Characteristic.Model, definition.name)
           .setCharacteristic(Characteristic.SerialNumber, device.id);
-        if (definition.capability === 'rgb-light') entry.detach = attachLight(engine, accessory, device.name);
-        else {
-          const service = accessory.addService(Service.Switch, device.name);
-          service.getCharacteristic(Characteristic.On)
-            .onGet(async () => { try { return await engine.read('on'); } catch { throw new HapStatusError(HAPStatus.SERVICE_COMMUNICATION_FAILURE); } })
-            .onSet(async on => { try { await engine.set({ on }); } catch { throw new HapStatusError(HAPStatus.SERVICE_COMMUNICATION_FAILURE); } });
-          const update = state => { if (!engine.closed) service.updateCharacteristic(Characteristic.On, state.on); };
-          engine.on('state', update); entry.detach = () => engine.off('state', update);
-        }
+        if(description)entry.detach=attachObserved(engine,accessory,device.name,description);
+        else if (definition.capability === 'rgb-light') entry.detach = attachLight(engine, accessory, device.name);
         entry.accessory = accessory; this.bridge.addBridgedAccessory(accessory);
       }
       const listening = new Promise(resolve => this.bridge.once('listening', port => { this.port = port; resolve(); }));

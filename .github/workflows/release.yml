@@ -6,7 +6,7 @@ on:
       release_tag:
         description: Release version tag
         required: true
-        default: v0.6.0
+        default: v0.7.0
         type: string
 
 permissions:
@@ -75,6 +75,7 @@ jobs:
           ./lantern gateway-service --config /tmp/lantern-bridge-ci.json > /tmp/lantern-bridge.service
           systemd-analyze verify /tmp/lantern-bridge.service
           runtime/bin/node --version
+          runtime/bin/node -e 'require("./homekit/node_modules/tuyapi");if(!require("./gateway/registry").adapters["lsc-tuya-light"])throw Error("LSC missing")'
           .venv/bin/python -c 'import bleak, dbus_fast'
           ./lantern service --device AA:BB:CC:DD:EE:FF > /tmp/lantern-direct.service
           systemd-analyze verify /tmp/lantern-direct.service
@@ -253,7 +254,7 @@ jobs:
           PY
           else
             gh release create "$RELEASE_TAG" --draft --prerelease --target "$GITHUB_SHA" \
-              --title "Lantern Bridge $RELEASE_TAG — Pont HomeKit multi-appareils" --notes-file .github/release-notes.md
+              --title "Lantern Bridge $RELEASE_TAG — Éclairage LSC et Tuya local" --notes-file .github/release-notes.md
           fi
           gh release upload "$RELEASE_TAG" \
             release/LanternDirect-Setup.exe release/LanternDirect-interface-claire.png release/LanternDirect-interface-sombre.png \
@@ -272,4 +273,4 @@ jobs:
           assert all(asset['state'] == 'uploaded' and asset['size'] > 0 for asset in assets)
           PY
           gh release edit "$RELEASE_TAG" --draft=false --prerelease \
-            --title "Lantern Bridge $RELEASE_TAG — Pont HomeKit multi-appareils" --notes-file .github/release-notes.md
+            --title "Lantern Bridge $RELEASE_TAG — Éclairage LSC et Tuya local" --notes-file .github/release-notes.md

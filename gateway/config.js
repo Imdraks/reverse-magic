@@ -21,7 +21,7 @@ function validateConfig(value) {
     const adapter = typeof device.adapter === 'string' && Object.hasOwn(adapters,device.adapter) ? adapters[device.adapter] : undefined;
     if (!adapter) throw new Error('Adaptateur inconnu. Utilisez la commande adapters.');
     object(device.options, adapter.options, 'Options');
-    const target = `${device.adapter}:${adapter.validate(device.options)}`;
+    const target = `${adapter.namespace||device.adapter}:${adapter.validate(device.options)}`;
     if (targets.has(target)) throw new Error('Un même appareil est configuré plusieurs fois.');
     targets.add(target);
   }

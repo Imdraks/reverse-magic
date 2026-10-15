@@ -8,10 +8,10 @@ OutFile "${OUTPUT_FILE}"
 InstallDir "$LOCALAPPDATA\Programs\LanternDirect"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
-VIProductVersion "0.6.0.0"
+VIProductVersion "0.7.0.0"
 VIAddVersionKey /LANG=1036 "ProductName" "Lantern Bridge"
 VIAddVersionKey /LANG=1036 "FileDescription" "Installation de Lantern Bridge pour Windows x64"
-VIAddVersionKey /LANG=1036 "FileVersion" "0.6.0"
+VIAddVersionKey /LANG=1036 "FileVersion" "0.7.0"
 VIAddVersionKey /LANG=1036 "LegalCopyright" "Lantern Bridge"
 !define MUI_ABORTWARNING
 !define MUI_FINISHPAGE_RUN "$INSTDIR\LanternDirect.exe"
@@ -71,7 +71,7 @@ Section "Lantern Bridge et pont Maison" Main
   CreateShortcut "$SMPROGRAMS\Lantern Bridge\Lantern Bridge.lnk" "$INSTDIR\LanternDirect.exe"
   CreateShortcut "$SMPROGRAMS\Lantern Bridge\Désinstaller.lnk" "$INSTDIR\Uninstall.exe"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LanternDirect" "DisplayName" "Lantern Bridge"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LanternDirect" "DisplayVersion" "0.6.0"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LanternDirect" "DisplayVersion" "0.7.0"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LanternDirect" "Publisher" "Lantern Bridge"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LanternDirect" "UninstallString" '"$INSTDIR\Uninstall.exe"'
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LanternDirect" "InstallLocation" "$INSTDIR"

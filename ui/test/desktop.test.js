@@ -27,7 +27,7 @@ test('desktop UI: authenticated API, devices, GRB colour, Maison pairing and ada
     browser=await chromium.launch({executablePath:process.env.LANTERN_CHROMIUM||'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
     const page=await browser.newPage({viewport:{width:1320,height:1020},deviceScaleFactor:1});
     const pageErrors=[];page.on('pageerror',error=>pageErrors.push(error.message));
-    await page.goto(origin+'/#key='+token);await page.getByRole('heading',{name:'Votre maison, réunie.'}).waitFor();
+    await page.goto(origin+'/#key='+token);await page.getByRole('heading',{name:'Vos lumières, réunies.'}).waitFor();
     await page.getByRole('button',{name:'Appareils',exact:true}).click();
     await page.getByRole('button',{name:'Rechercher',exact:true}).click();
     await page.getByRole('button',{name:'Connecter',exact:true}).click();

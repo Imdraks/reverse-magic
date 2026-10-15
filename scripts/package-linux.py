@@ -55,6 +55,7 @@ def main():
         for name in ['package.json', 'package-lock.json']: shutil.copy2(ROOT / 'homekit' / name, bundle / 'homekit' / name)
         subprocess.run(['npm', 'ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund', '--cache', str(ROOT.parent / '.npm-cache')], cwd=bundle / 'homekit', check=True)
         assert not (bundle / 'homekit/node_modules/hap-controller').exists()
+        assert (bundle / 'homekit/node_modules/tuyapi/index.js').is_file()
         shutil.copytree(ROOT / 'gateway', bundle / 'gateway', ignore=shutil.ignore_patterns('node_modules','test'))
         shutil.copytree(ROOT / 'docs', bundle / 'docs')
         with tarfile.open(args.output, 'w:gz') as archive: archive.add(bundle, arcname=bundle.name)
