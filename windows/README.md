@@ -17,7 +17,7 @@ Les valeurs affichées sont les réglages demandés, pas une lecture de l’éta
 
 ## Validation et compilation
 
-Compilation Release Windows x64 réussie depuis Linux avec le SDK officiel .NET 10.0.401, après contrôle SHA-512 du téléchargement. Les 38 vérifications du protocole et de conversion des couleurs passent. Les APIs Windows, l’interface et la liaison radio ne sont pas exécutables dans ce cloud Linux : un essai sur votre PC et vos LED reste nécessaire. L’exécutable n’est pas signé avec un certificat de distribution Windows.
+Compilation Release Windows x64 réussie depuis Linux avec le SDK officiel .NET 10.0.401, après contrôle SHA-512 du téléchargement. Les 43 vérifications du protocole et de conversion des couleurs passent. Les APIs Windows, l’interface et la liaison radio ne sont pas exécutables dans ce cloud Linux : un essai sur votre PC et vos LED reste nécessaire. L’exécutable n’est pas signé avec un certificat de distribution Windows.
 
 Depuis la racine des sources avec le SDK .NET 10 :
 
@@ -44,7 +44,7 @@ Les commandes manuelles sont désactivées pendant le fonctionnement du pont pou
 
 La fenêtre embarque la même interface que Linux : vue d’ensemble, couleurs, ambiances, Maison et appareils, avec apparence claire ou sombre. Les commandes utilisent toujours le contrôleur BLE Windows natif et le pont existant. Les fichiers HTML/CSS/JS sont intégrés dans l’EXE et extraits dans le profil utilisateur ; aucun site externe ou connexion Internet n’est nécessaire pour l’interface.
 
-L’affichage moderne nécessite **Microsoft Edge WebView2 Runtime**, généralement déjà présent sur Windows 11. S’il manque, le programme conserve les commandes classiques et vous invite à l’installer depuis [Microsoft](https://developer.microsoft.com/microsoft-edge/webview2/). Le runtime WebView2 n’est pas inclus dans le paquet. Le pont Maison nécessite toujours le ZIP Windows complet.
+L’affichage moderne nécessite **Microsoft Edge WebView2 Runtime**, généralement déjà présent sur Windows 11. S’il manque, le programme conserve les commandes classiques et vous invite à l’installer depuis [Microsoft](https://developer.microsoft.com/microsoft-edge/webview2/). Le runtime WebView2 n’est pas inclus dans le paquet. Le pont Maison est inclus dans l’installateur ; en mode portable, conserver le ZIP Windows complet.
 
 Le rendu partagé a été testé dans Chromium et la compilation Windows x64 est vérifiée. Le fonctionnement de la fenêtre WebView2 et du Bluetooth reste à confirmer sur votre PC Windows.
 

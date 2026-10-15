@@ -14,7 +14,7 @@ Contrôle Bluetooth des LED Magic Lantern sur iOS et Windows, avec des **ponts W
 
 Le pont expose allumage, couleur et luminosité. Les effets RGBIC et la musique restent dans les clients directs. Les couleurs sont envoyées en GRB pour corriger l’inversion rouge/vert du contrôleur. Les réglages Maison sont conservés localement et restaurés après reconnexion ; le protocole actuel ne fournit pas de lecture de l’état réel.
 
-Validation : tests Linux avec appairage chiffré réel et transport BLE simulé, 38 vérifications Windows, tests d’appairage HomeKit chiffré et de coupure/reconnexion, compilation Windows x64. Le build iOS et ses 28 tests ont été validés pour v0.1.1. L’essai du pont sur vos appareils physiques reste nécessaire : le cloud Linux ne peut pas exécuter la radio Bluetooth Windows ni Maison.
+Validation : tests Linux avec appairage chiffré réel et transport BLE simulé, 43 vérifications Windows, tests d’appairage HomeKit chiffré et de coupure/reconnexion, compilation Windows x64. Le build iOS et ses 28 tests ont été validés pour v0.1.1. L’essai du pont sur vos appareils physiques reste nécessaire : le cloud Linux ne peut pas exécuter la radio Bluetooth Windows ni Maison.
 
 La release contient les sources et les SHA-256. Voir [Linux/Raspberry Pi](linux/README.md), [Windows](windows/README.md), [HomeKit](homekit/README.md), [iOS](ios/README.md) et [le protocole Bluetooth](ios/PROTOCOL.md).
 
