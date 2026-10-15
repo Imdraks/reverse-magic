@@ -76,7 +76,7 @@ class Desktop:
         favorites,error=self.favorites.snapshot()
         if self.controller and not self.controller.connected and not self.connect_task and not self.bridge_task and self.connection_issue is None:
             self.connection_issue=issue(ConnectionError('Connexion perdue.'));self.status='Connexion interrompue.'
-        return dict(version='0.7.0',favorites=favorites,favoritesError=error,canSaveFavorite=self.known and not self.mic and not error,connectionIssue=self.connection_issue,connecting=self.connect_task is not None,connectionAttempt=self.attempt,platform='linux',connected=bool(self.controller and self.controller.connected),device=self.device,deviceName=self.device_name,
+        return dict(version='0.7.1',favorites=favorites,favoritesError=error,canSaveFavorite=self.known and not self.mic and not error,connectionIssue=self.connection_issue,connecting=self.connect_task is not None,connectionAttempt=self.attempt,platform='linux',connected=bool(self.controller and self.controller.connected),device=self.device,deviceName=self.device_name,
                     on=self.on,brightness=self.brightness,rgb=self.rgb,mic=self.mic,bridge=self.bridge_task is not None and not self.bridge_task.done(),
                     pairingReady=self.pairing_ready,devices=self.devices,effects=self.effects,status=self.status)
 

@@ -15,7 +15,7 @@ Le périmètre est exclusivement l’éclairage. [LSC Smart Connect / Tuya LAN](
 
 ## Installation
 
-Utilisez les paquets complets de la [release](https://github.com/Imdraks/reverse-magic/releases/tag/v0.7.0). Les noms de fichiers `LanternDirect` sont conservés pour faciliter la mise à jour et protéger les données existantes.
+Utilisez les paquets complets de la [release](https://github.com/Imdraks/reverse-magic/releases/tag/v0.7.1). Les noms de fichiers `LanternDirect` sont conservés pour faciliter la mise à jour et protéger les données existantes.
 
 Sur Linux/Pi 64 bits : extraire le paquet ARM64 (Pi) ou x64 (PC), installer `python3-venv` et BlueZ, puis lancer `./install.sh`. Les détails radio restent dans [le guide Linux](../linux/README.md). Le pont HTTP seul n’utilise pas la radio Bluetooth.
 

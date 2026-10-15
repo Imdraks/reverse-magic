@@ -4,7 +4,7 @@ import os
 import re
 import urllib.request
 
-VERSION='0.7.0'
+VERSION='0.7.1'
 def check_updates():
     request=urllib.request.Request('https://api.github.com/repos/Imdraks/reverse-magic/releases?per_page=20',headers={'User-Agent':'LanternDirect/'+VERSION})
     try:

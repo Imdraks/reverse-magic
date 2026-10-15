@@ -64,7 +64,7 @@ public sealed partial class MainForm
     {
         using var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run");
         var (favorites,favoritesError)=favoriteStore.Snapshot();
-        return new { version="0.7.0",favorites,favoritesError,canSaveFavorite=desktopKnown&&!controllerMic&&favoritesError==null,connectionIssue=desktopIssue,connecting=desktopConnectCancel!=null,connectionAttempt=desktopAttempt,platform="windows", connected=ble.IsReady, device=lastDevice is null?null:FormatAddress(lastDevice.Address), deviceName=lastDevice?.Name,
+        return new { version="0.7.1",favorites,favoritesError,canSaveFavorite=desktopKnown&&!controllerMic&&favoritesError==null,connectionIssue=desktopIssue,connecting=desktopConnectCancel!=null,connectionAttempt=desktopAttempt,platform="windows", connected=ble.IsReady, device=lastDevice is null?null:FormatAddress(lastDevice.Address), deviceName=lastDevice?.Name,
             on=desktopOn, brightness=brightness.Value, rgb=$"{selectedColor.R:X2}{selectedColor.G:X2}{selectedColor.B:X2}",mic=controllerMic,
             bridge=homeKit!=null,pairingReady=pairingCode!=null,autostart=key?.GetValue("LanternDirectHomeKit") is string,
             devices=found.Values.Select(x=>new {address=FormatAddress(x.Address),name=x.Name,rssi=x.RSSI}).ToArray(),effects=catalog,
