@@ -89,7 +89,7 @@ public sealed partial class MainForm
             var data=root.GetProperty("data");
             object result;
             if(action=="state")result=DesktopState();
-            else if(action=="cancel-connect"){desktopConnectCancel?.Cancel();result=new {};}
+            else if(action=="cancel-connect"){autoReconnectPaused=true;desktopConnectCancel?.Cancel();result=new {};}
             else
             {
                 await desktopCommands.WaitAsync();
@@ -120,8 +120,8 @@ public sealed partial class MainForm
                 if(!System.Text.RegularExpressions.Regex.IsMatch(text,@"^(?:[0-9A-F]{2}:){5}[0-9A-F]{2}$"))throw new ArgumentException("Adresse Bluetooth invalide.");
                 var address=Convert.ToUInt64(text.Replace(":",""),16);
                 var selected=found.GetValueOrDefault(address)??(lastDevice?.Address==address?lastDevice:new FoundLED(address,"Contrôleur LED",0));
-                await ConnectDesktop(selected);break;
-            case "disconnect":StopScan();ble.Disconnect();controllerMic=false;desktopIssue=null;status.Text="Connexion fermée.";break;
+                autoReconnectPaused=true;await ConnectDesktop(selected);break;
+            case "disconnect":autoReconnectPaused=true;StopScan();ble.Disconnect();controllerMic=false;desktopIssue=null;status.Text="Connexion fermée.";break;
             case "bridge-start":await StartHomeKit();break;
             case "bridge-stop":StopHomeKit();break;
             case "favorite-save":

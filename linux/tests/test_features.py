@@ -73,3 +73,56 @@ class ConnectionTests(unittest.IsolatedAsyncioTestCase):
             await app.close()
         self.assertTrue(issue(TimeoutError())['retryable'])
         self.assertFalse(issue(FileNotFoundError())['retryable'])
+
+
+class AutoReconnectTests(unittest.IsolatedAsyncioTestCase):
+    async def test_restart_outage_manual_disconnect_and_no_light_writes(self):
+        class Radio:
+            instances=[]
+            unavailable=False
+            def __init__(self,*args):
+                self.connected=False;self.frames=[];self.instances.append(self)
+            async def connect(self):
+                if self.unavailable:raise TimeoutError()
+                self.connected=True
+            async def close(self):self.connected=False
+            async def write(self,frames):self.frames.extend(frames)
+        async def until(predicate):
+            async with asyncio.timeout(3):
+                while not predicate():await asyncio.sleep(.005)
+        with tempfile.TemporaryDirectory() as directory:
+            args=SimpleNamespace(device=None,adapter=None,data_dir=Path(directory))
+            app=Desktop(args,Radio)
+            await app.command('connect',dict(address='AA:BB:CC:DD:EE:FF',name='Salon'))
+            await app.close()
+            Radio.unavailable=True
+            app=Desktop(args,Radio);app.start_reconnect(.01)
+            await until(lambda: app.connection_issue is not None)
+            Radio.unavailable=False
+            await until(lambda: app.controller and app.controller.connected)
+            self.assertEqual(app.device_name,'Salon')
+            self.assertFalse(app.known)
+            first=app.controller;first.connected=False
+            await until(lambda: app.controller is not first and app.controller and app.controller.connected)
+            await app.command('disconnect',{})
+            attempts=len(Radio.instances);await asyncio.sleep(.05)
+            self.assertEqual(len(Radio.instances),attempts)
+            self.assertIsNone(app.controller)
+            self.assertTrue(all(not x.frames for x in Radio.instances))
+            await app.close()
+            # A deliberate disconnect pauses this session, but preserves next-launch selection.
+            app=Desktop(args,Radio);app.start_reconnect(.01)
+            await until(lambda: app.controller and app.controller.connected)
+            await app.close()
+
+    async def test_shutdown_cancels_startup_connection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            (root/'gui-device.json').write_text(json.dumps(dict(address='AA:BB:CC:DD:EE:FF')))
+            app=Desktop(SimpleNamespace(device=None,adapter=None,data_dir=Path(directory)),FakeController)
+            app.start_reconnect(.01)
+            async with asyncio.timeout(1):
+                while app.connect_task is None:await asyncio.sleep(0)
+                await app.close()
+            self.assertIsNone(app.controller)
+            self.assertIsNone(app.connect_task)

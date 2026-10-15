@@ -48,9 +48,29 @@ class Desktop:
         self.mode,self.effect,self.scene,self.speed,self.known='color',0,False,50,False
         self.favorites=Favorites(self.base/'favorites.json')
         self.connection_issue=None;self.connect_task=None;self.attempt=0
+        self.auto_task = None
+        self.closing = False
+        self.auto_paused = False
+        self.remembered = dict(address=self.device,name=self.device_name) if self.device else None
         self.commands = asyncio.Lock()
         self.stop = asyncio.Event()
         self.effects = json.loads((ROOT/'windows/effects.json').read_text()) if (ROOT/'windows/effects.json').exists() else json.loads((ROOT/'linux/effects.json').read_text())
+
+    def start_reconnect(self, interval=10):
+        if self.auto_task is None:
+            self.auto_task=asyncio.create_task(self.reconnect_loop(interval))
+
+    async def reconnect_loop(self, interval):
+        while True:
+            async with self.commands:
+                if (not self.auto_paused and self.remembered
+                        and not (self.bridge_task and not self.bridge_task.done())
+                        and not (self.controller and self.controller.connected)):
+                    try:
+                        await self.connect_with_retry(self.remembered)
+                    except ValueError:
+                        if self.closing: return
+            await asyncio.sleep(interval)
 
     def snapshot(self):
         favorites,error=self.favorites.snapshot()
@@ -86,6 +106,8 @@ class Desktop:
         except BaseException: await self.disconnect();raise
         try:self.preferences.write_text(json.dumps({'address':address,'name':self.device_name}))
         except OSError:pass
+        self.remembered=dict(address=address,name=self.device_name)
+        self.auto_paused=False
         self.known=False;self.connection_issue=None
         self.status='Votre lumière est connectée.'
 
@@ -127,6 +149,7 @@ class Desktop:
     async def command(self,action,data):
         if action=='state': return self.snapshot()
         if action=='cancel-connect':
+            self.auto_paused=True
             if self.connect_task:self.connect_task.cancel()
             return {}
         if action=='quit': asyncio.get_running_loop().call_later(.3,self.stop.set);return {}
@@ -144,8 +167,10 @@ class Desktop:
                     if data.get('all') or name.startswith(('MELK-','MELK_')) or protocol.SERVICE in advertisement.service_uuids:
                         self.devices.append(dict(address=device.address,name=name,rssi=advertisement.rssi))
                 self.status='Choisissez votre contrôleur.' if self.devices else 'Aucune LED trouvée. Vérifiez leur alimentation et fermez les autres apps Bluetooth.'
-            elif action=='connect': await self.connect_with_retry(data)
-            elif action=='disconnect': await self.disconnect();self.connection_issue=None;self.status='Connexion fermée.'
+            elif action=='connect':
+                self.auto_paused=True
+                await self.connect_with_retry(data)
+            elif action=='disconnect': self.auto_paused=True;await self.disconnect();self.connection_issue=None;self.status='Connexion fermée.'
             elif action=='bridge-start':
                 if not self.controller or not self.controller.connected: await self.connect(dict(address=self.device,name=self.device_name))
                 if self.mic:
@@ -209,6 +234,10 @@ class Desktop:
         if task is self.bridge_task: self.pairing_ready=False
 
     async def close(self):
+        self.closing=True
+        if self.auto_task:
+            self.auto_task.cancel();await asyncio.gather(self.auto_task,return_exceptions=True)
+            self.auto_task=None
         if self.connect_task and self.connect_task is not asyncio.current_task():
             self.connect_task.cancel();await asyncio.gather(self.connect_task,return_exceptions=True)
         await self.stop_bridge();await self.disconnect()
@@ -253,6 +282,7 @@ class Handler(BaseHTTPRequestHandler):
 
 async def run_gui(args):
     desktop=Desktop(args)
+    desktop.start_reconnect()
     loop=asyncio.get_running_loop()
     server=LocalServer(desktop,loop)
     thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()

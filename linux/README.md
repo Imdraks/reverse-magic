@@ -154,3 +154,18 @@ La vérification des nouvelles versions se lance explicitement dans Appareils et
 ## Pont multi-appareils
 
 Pour réunir plusieurs produits et protocoles sous un même appairage Maison, utiliser `./lantern gateway` et `./lantern gateway-service`. Voir [le guide et la migration](../docs/GATEWAY.md). Les commandes LED de ce document restent disponibles comme module Magic Lantern.
+
+### Reconnexion au lancement
+
+L’interface se reconnecte automatiquement au dernier contrôleur Bluetooth auquel
+elle s’est connectée avec succès. Elle réessaie toutes les 10 secondes après un
+cycle de connexion infructueux, ainsi qu’après une perte de liaison. Aucun
+réglage lumineux n’est envoyé lors de cette reconnexion en mode manuel.
+« Déconnecter » ou « Annuler » suspend les tentatives pour la session en cours ;
+une connexion manuelle réussie les réactive. Le dernier appareil reste mémorisé
+pour le prochain lancement. Une première sélection manuelle est nécessaire.
+
+Le pont multi-éclairages reprend tous les appareils de son fichier de
+configuration à chaque lancement et surveille leur disponibilité. Pour qu’il
+redémarre avec le PC ou le Raspberry Pi, configurer le démarrage automatique
+comme indiqué dans le [guide du pont](../docs/GATEWAY.md).

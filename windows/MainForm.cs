@@ -67,7 +67,7 @@ public sealed partial class MainForm : Form
         }));
         connectionPanel.Controls.Add(Button("Déconnecter", async () =>
         {
-            StopScan(); ble.Disconnect(); controllerMic = false;
+            autoReconnectPaused = true; StopScan(); ble.Disconnect(); controllerMic = false;
             status.Text = "Déconnecté."; await Task.CompletedTask;
         }));
 
@@ -140,6 +140,7 @@ public sealed partial class MainForm : Form
         scanTimer.Tick += (_, _) => { StopScan(); status.Text = found.Count == 0 ? "Aucune LED trouvée. Rapprochez-vous et fermez l’app Android." : "Choisissez votre contrôleur."; };
         FormClosed += (_, _) => { StopHomeKit(); scanTimer.Dispose(); ble.Dispose(); };
         InitializeDesktop(page);
+        InitializeReconnect(homekitAtStartup);
     }
 
     private async Task Connect(FoundLED selected, CancellationToken cancellationToken = default)
@@ -148,6 +149,7 @@ public sealed partial class MainForm : Form
         await ble.ConnectAsync(selected.Address, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         lastDevice = selected;
+        autoReconnectPaused = false;
         // Failure to save a convenience preference must not invalidate a live connection.
         try { Directory.CreateDirectory(Path.GetDirectoryName(preferencesPath)!); File.WriteAllText(preferencesPath, JsonSerializer.Serialize(selected)); } catch { }
         status.Text = $"Connecté à {selected.Name}.";
