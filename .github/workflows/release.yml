@@ -1,4 +1,4 @@
-name: Publish iOS Windows and Linux release
+name: Publish Lantern Bridge for Windows and Linux
 
 on:
   workflow_dispatch:
@@ -6,11 +6,7 @@ on:
       release_tag:
         description: Release version tag
         required: true
-        default: v0.5.0
-        type: string
-      ios_run_id:
-        description: Successful iOS build run for the same app sources
-        required: true
+        default: v0.6.0
         type: string
 
 permissions:
@@ -73,6 +69,11 @@ jobs:
           cd smoke/LanternDirect-Linux-${{ matrix.arch }}
           ./install.sh
           ./lantern --help
+          ./lantern gateway adapters
+          ./lantern gateway init --config /tmp/lantern-bridge-ci.json
+          ./lantern gateway check --config /tmp/lantern-bridge-ci.json
+          ./lantern gateway-service --config /tmp/lantern-bridge-ci.json > /tmp/lantern-bridge.service
+          systemd-analyze verify /tmp/lantern-bridge.service
           runtime/bin/node --version
           .venv/bin/python -c 'import bleak, dbus_fast'
           ./lantern service --device AA:BB:CC:DD:EE:FF > /tmp/lantern-direct.service
@@ -130,7 +131,6 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
       RELEASE_TAG: ${{ inputs.release_tag }}
-      IOS_RUN_ID: ${{ inputs.ios_run_id }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
@@ -173,44 +173,17 @@ jobs:
           sudo apt-get install -y nsis
           python3 scripts/package-installer.py --bundle release/LanternDirect-Windows-HomeKit.zip --output release/LanternDirect-Setup.exe
 
-      - name: Fetch the validated iOS build
-        run: |
-          mkdir -p release
-          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          [[ "$IOS_RUN_ID" =~ ^[0-9]+$ ]]
-          gh run watch "$IOS_RUN_ID" --interval 30 --exit-status
-          gh run view "$IOS_RUN_ID" --json conclusion --jq '.conclusion' | grep -x success
-          ios_commit=$(gh run view "$IOS_RUN_ID" --json headSha --jq '.headSha')
-          git fetch --no-tags origin "$ios_commit" --depth=1
-          git diff --exit-code "$ios_commit" HEAD -- ios/MagicLantern ios/Tests ios/LanternDirect.xcodeproj ios/Package.swift
-          gh run download "$IOS_RUN_ID" --name LanternDirect-unsigned-IPA --dir release
-          python3 - <<'PY'
-          from pathlib import Path
-          import zipfile, plistlib, struct
-          ipa = Path('release/LanternDirect-unsigned.ipa')
-          with zipfile.ZipFile(ipa) as archive:
-              assert archive.testzip() is None
-              info = plistlib.loads(archive.read('Payload/LanternDirect.app/Info.plist'))
-              binary = archive.read('Payload/LanternDirect.app/' + info['CFBundleExecutable'])
-              assert info['CFBundleIdentifier'] == 'com.example.lanterndirect'
-              assert struct.unpack('<II', binary[:8]) == (0xfeedfacf, 0x100000c)
-              expected = plistlib.loads(Path('ios/MagicLantern/Info.plist').read_bytes())
-              assert info['CFBundleShortVersionString'] == expected['CFBundleShortVersionString']
-              assert info['CFBundleVersion'] == expected['CFBundleVersion']
-          print('Validated iPhone arm64 IPA payload.')
-          PY
-
       - name: Package sources, installation guide and checksums
         run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           cp release/windows/LanternDirect.exe release/LanternDirect.exe
-          cp INSTALLER-SUR-IPHONE.txt release/
+          cp docs/GATEWAY.md release/GUIDE-PONT.md
           cp release/interface/lantern-light.png release/LanternDirect-interface-claire.png
           cp release/interface/lantern-dark.png release/LanternDirect-interface-sombre.png
-          git archive --format=zip HEAD ios .github/workflows/ios-build.yml > release/LanternDirect-iOS-sources.zip
-          git archive --format=zip HEAD windows windows-tests homekit ui installer scripts/package-installer.py scripts/package-homekit.py MAISON-WINDOWS.txt ios/PROTOCOL.md > release/LanternDirect-Windows-sources.zip
-          git archive --format=zip HEAD lantern linux homekit ui windows/effects.json scripts/package-linux.py ios/PROTOCOL.md > release/LanternDirect-Linux-sources.zip
+          git archive --format=zip HEAD windows windows-tests homekit gateway ui installer scripts/package-installer.py scripts/package-homekit.py MAISON-WINDOWS.txt docs > release/LanternDirect-Windows-sources.zip
+          git archive --format=zip HEAD lantern linux homekit gateway ui windows/effects.json scripts/package-linux.py docs > release/LanternDirect-Linux-sources.zip
           cd release
-          sha256sum LanternDirect-Setup.exe LanternDirect-interface-claire.png LanternDirect-interface-sombre.png LanternDirect-Linux-arm64.tar.gz LanternDirect-Linux-x64.tar.gz LanternDirect-Linux-sources.zip LanternDirect-Windows-HomeKit.zip LanternDirect-unsigned.ipa LanternDirect.exe LanternDirect-iOS-sources.zip LanternDirect-Windows-sources.zip INSTALLER-SUR-IPHONE.txt > SHA256SUMS.txt
+          sha256sum LanternDirect-Setup.exe LanternDirect-interface-claire.png LanternDirect-interface-sombre.png LanternDirect-Linux-arm64.tar.gz LanternDirect-Linux-x64.tar.gz LanternDirect-Linux-sources.zip LanternDirect-Windows-HomeKit.zip LanternDirect.exe LanternDirect-Windows-sources.zip GUIDE-PONT.md > SHA256SUMS.txt
 
       - name: Stage release files
         run: |
@@ -280,23 +253,23 @@ jobs:
           PY
           else
             gh release create "$RELEASE_TAG" --draft --prerelease --target "$GITHUB_SHA" \
-              --title "Lantern Direct $RELEASE_TAG — Favoris, connexion et installation" --notes-file .github/release-notes.md
+              --title "Lantern Bridge $RELEASE_TAG — Pont HomeKit multi-appareils" --notes-file .github/release-notes.md
           fi
           gh release upload "$RELEASE_TAG" \
             release/LanternDirect-Setup.exe release/LanternDirect-interface-claire.png release/LanternDirect-interface-sombre.png \
             release/LanternDirect-Linux-arm64.tar.gz release/LanternDirect-Linux-x64.tar.gz release/LanternDirect-Linux-sources.zip \
-            release/LanternDirect-Windows-HomeKit.zip release/LanternDirect-unsigned.ipa release/LanternDirect.exe \
-            release/LanternDirect-iOS-sources.zip release/LanternDirect-Windows-sources.zip \
-            release/INSTALLER-SUR-IPHONE.txt release/SHA256SUMS.txt --clobber
+            release/LanternDirect-Windows-HomeKit.zip release/LanternDirect.exe \
+            release/LanternDirect-Windows-sources.zip \
+            release/GUIDE-PONT.md release/SHA256SUMS.txt --clobber
           gh release view "$RELEASE_TAG" --json assets > release/assets.json
           python3 - <<'PY'
           import json
-          expected = {'LanternDirect-Setup.exe', 'LanternDirect-interface-claire.png', 'LanternDirect-interface-sombre.png', 'LanternDirect-Linux-arm64.tar.gz', 'LanternDirect-Linux-x64.tar.gz', 'LanternDirect-Linux-sources.zip', 'LanternDirect-Windows-HomeKit.zip', 'LanternDirect-unsigned.ipa', 'LanternDirect.exe',
-                      'LanternDirect-iOS-sources.zip', 'LanternDirect-Windows-sources.zip',
-                      'INSTALLER-SUR-IPHONE.txt', 'SHA256SUMS.txt'}
+          expected = {'LanternDirect-Setup.exe', 'LanternDirect-interface-claire.png', 'LanternDirect-interface-sombre.png', 'LanternDirect-Linux-arm64.tar.gz', 'LanternDirect-Linux-x64.tar.gz', 'LanternDirect-Linux-sources.zip', 'LanternDirect-Windows-HomeKit.zip', 'LanternDirect.exe',
+                      'LanternDirect-Windows-sources.zip',
+                      'GUIDE-PONT.md', 'SHA256SUMS.txt'}
           assets = json.load(open('release/assets.json'))['assets']
           assert expected == {asset['name'] for asset in assets}
           assert all(asset['state'] == 'uploaded' and asset['size'] > 0 for asset in assets)
           PY
           gh release edit "$RELEASE_TAG" --draft=false --prerelease \
-            --title "Lantern Direct $RELEASE_TAG — Favoris, connexion et installation" --notes-file .github/release-notes.md
+            --title "Lantern Bridge $RELEASE_TAG — Pont HomeKit multi-appareils" --notes-file .github/release-notes.md

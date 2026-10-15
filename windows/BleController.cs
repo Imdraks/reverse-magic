@@ -19,6 +19,7 @@ public sealed class BleController : IDisposable
     private GattDeviceService? service;
     private GattCharacteristic? output;
     private CancellationTokenSource? connection;
+    private Mutex? deviceLease;
     private bool showAll;
     public bool IsReady => output != null && device?.ConnectionStatus == BluetoothConnectionStatus.Connected;
     public event Action<FoundLED>? Found;
@@ -55,6 +56,8 @@ public sealed class BleController : IDisposable
         timeout.CancelAfter(TimeSpan.FromSeconds(20));
         try
         {
+            deviceLease = new Mutex(false, $"LanternDirect.Device.{Environment.UserName}.{address:X12}", out var ownsDevice);
+            if(!ownsDevice)throw new InvalidOperationException("Ce contrôleur est déjà utilisé par un autre client ou module Lantern.");
             device = await BluetoothLEDevice.FromBluetoothAddressAsync(address).AsTask(timeout.Token)
                 ?? throw new InvalidOperationException("Contrôleur indisponible. Activez le Bluetooth et libérez les LED de toute autre connexion.");
             var services = await device.GetGattServicesForUuidAsync(LedProtocol.Service, BluetoothCacheMode.Uncached).AsTask(timeout.Token);
@@ -113,6 +116,7 @@ public sealed class BleController : IDisposable
         if (device != null) device.ConnectionStatusChanged -= ConnectionChanged;
         service?.Dispose(); service = null;
         device?.Dispose(); device = null;
+        deviceLease?.Dispose(); deviceLease = null;
     }
     public void Dispose() { StopScan(); Disconnect(); }
 }

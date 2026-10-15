@@ -43,6 +43,8 @@ def main():
         subprocess.run(['npm', 'ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund', '--cache', str(ROOT.parent / '.npm-cache')], cwd=homekit, check=True)
         assert (homekit / 'node_modules/hap-nodejs/dist/index.js').is_file()
         assert not (homekit / 'node_modules/hap-controller').exists(), 'Test-only dependency included'
+        shutil.copytree(ROOT / 'gateway', bundle / 'gateway', ignore=shutil.ignore_patterns('node_modules','test'))
+        shutil.copytree(ROOT / 'docs', bundle / 'docs')
         with zipfile.ZipFile(args.output, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
             for file in sorted(bundle.rglob('*')):
                 if file.is_file(): archive.write(file, file.relative_to(bundle))

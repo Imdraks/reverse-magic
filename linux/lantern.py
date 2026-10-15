@@ -72,7 +72,45 @@ Environment=PYTHONUNBUFFERED=1
 WantedBy=multi-user.target
 '''
 
+def gateway_service_unit(args):
+    user = pwd.getpwuid(os.getuid()).pw_name
+    if os.getuid() == 0: raise RuntimeError('Générez le service depuis votre compte habituel, sans sudo.')
+    values=[ROOT/'lantern','gateway','run','--config',args.config.expanduser().resolve()]
+    if args.data_dir:values+=['--data-dir',args.data_dir.expanduser().resolve()]
+    command=' '.join(quote_unit(value) for value in values)
+    return f'''[Unit]
+Description=Lantern Bridge — pont HomeKit multi-appareils
+Wants=network-online.target bluetooth.service
+After=network-online.target bluetooth.service
+
+[Service]
+Type=simple
+User={user}
+SupplementaryGroups=bluetooth
+WorkingDirectory={str(ROOT).replace('%', '%%')}
+ExecStart={command}
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=15
+UMask=0077
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
+'''
+
 async def run(args):
+    if args.command == 'gateway-service':
+        unit=gateway_service_unit(args)
+        if not args.install:print(unit,end='');return
+        subprocess.run([str(node_path()),str(ROOT/'gateway/cli.js'),'check','--config',str(args.config.expanduser().resolve())],check=True)
+        subprocess.run(['sudo','tee','/etc/systemd/system/lantern-bridge.service'],input=unit,text=True,stdout=subprocess.DEVNULL,check=True)
+        subprocess.run(['sudo','systemctl','daemon-reload'],check=True)
+        subprocess.run(['sudo','systemctl','enable','--now','lantern-bridge.service'],check=True)
+        print('Service installé : systemctl status lantern-bridge. Code : ./lantern gateway pairing --config',args.config)
+        return
+    if args.command == 'gateway':
+        os.execv(str(node_path()), [str(node_path()), str(ROOT/'gateway/cli.js'), *args.arguments])
     if args.command == 'desktop-install':
         from desktop_tools import install_shortcut
         print('Raccourci installé :',install_shortcut(ROOT))
@@ -139,6 +177,12 @@ async def run(args):
 def parser():
     result = argparse.ArgumentParser(description='Lantern Direct — Linux et Raspberry Pi, terminal / Maison')
     commands = result.add_subparsers(dest='command', required=True)
+    gateway = commands.add_parser('gateway', help='Pont HomeKit multi-appareils (init, adapters, check, run, pairing)')
+    gateway.add_argument('arguments', nargs=argparse.REMAINDER)
+    service=commands.add_parser('gateway-service',help='Service systemd du pont multi-appareils')
+    service.add_argument('--config',type=Path,required=True)
+    service.add_argument('--data-dir',type=Path)
+    service.add_argument('--install',action='store_true')
     for name in ['scan', 'desktop-install', 'gui', 'bridge', 'pairing', 'service', 'on', 'off', 'color', 'brightness', 'effect', 'mic']:
         cmd = commands.add_parser(name)
         cmd.add_argument('--adapter', help='Adaptateur BlueZ, par exemple hci0')

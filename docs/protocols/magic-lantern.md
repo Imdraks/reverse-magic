@@ -26,14 +26,12 @@ Chaque trame fait exactement neuf octets, en hexadécimal ci-dessous. Aucun chec
 
 L’APK dispose aussi de commandes de température de blanc, configuration de pixels, ordre de câblage et horaires, non exposées par cette première app RGBIC. L’existence de ces fonctions dans une application multimatériel n’établit pas qu’elles sont disponibles sur votre contrôleur.
 
-`music_amplitude` applique un traitement Android à la couleur avant émission. L’app iOS reproduit le **format de trame**, mais utilise son propre calcul d’enveloppe sonore pour moduler la couleur choisie. Cela ne prétend pas reproduire à l’identique tous les effets audio de l’application Android.
-
 ## Adaptation au contrôleur de l’utilisateur
 
-Depuis la release v0.1.1, les clients iOS et Windows envoient les couleurs demandées dans l’ordre **GRB** (`GG RR BB`) : l’utilisateur a constaté que rouge et vert étaient inversés avec les trames RGB de la première version. Le bleu conserve sa position. Cette adaptation concerne également les trames musicales produites par le microphone de l’iPhone. La table ci-dessus décrit toujours les trames originales de l’APK, avant cette adaptation matérielle. L’application ne modifie pas la configuration persistante du contrôleur et ne remappe pas les effets générés par son firmware.
+Depuis la release v0.1.1, les modules Windows et Linux envoient les couleurs demandées dans l’ordre **GRB** (`GG RR BB`) : l’utilisateur a constaté que rouge et vert étaient inversés avec les trames RGB de la première version. Le bleu conserve sa position. La table ci-dessus décrit toujours les trames originales de l’APK, avant cette adaptation matérielle. L’application ne modifie pas la configuration persistante du contrôleur et ne remappe pas les effets générés par son firmware.
 
 ## Validation effectuée
 
-Les 28 tests portables comparent des trames attendues issues des affectations du service Android, vérifient les limites d’entrée et exercent les invariants de la file d’attente. Le catalogue contient 241 entrées, dont 28 scènes ; noms et commandes ont été appariés après vérification de la longueur de chaque tableau. Les ressources de ce paquet de base sont en anglais, ce qui explique les noms d’effets anglais dans l’interface française.
+Les tests portables Python et C# comparent des trames attendues issues des affectations du service Android, vérifient les limites d’entrée et exercent les invariants de la file d’attente. Le catalogue contient 241 entrées, dont 28 scènes ; noms et commandes ont été appariés après vérification de la longueur de chaque tableau. Les ressources de ce paquet de base sont en anglais, ce qui explique les noms d’effets anglais dans l’interface française.
 
 L’analyse est statique. Elle ne constitue pas un test radio, une identification du firmware de votre modèle, ou une certification HomeKit/Matter. Aucun appareil LED n’est accessible dans ce cloud.

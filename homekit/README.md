@@ -1,3 +1,7 @@
+# Moteur HomeKit et compatibilité du pont LED
+
+Le cœur multi-appareils est désormais dans [gateway/](../gateway) : [guide](../docs/GATEWAY.md), [architecture](../docs/ARCHITECTURE.md). Ce dossier fournit les moteurs, le stockage privé et les services HAP réutilisés.
+
 # Pont HomeKit
 
 Serveur HAP-NodeJS pour une lampe Magic Lantern reliée par Bluetooth aux clients Windows ou Linux. Installation : [guide Windows](../MAISON-WINDOWS.txt) ou [guide Linux/Raspberry Pi](../linux/README.md).

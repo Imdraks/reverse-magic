@@ -12,7 +12,7 @@ public sealed partial class MainForm
     private readonly SemaphoreSlim desktopCommands = new(1);
     private void InitializeDesktop(Control legacy)
     {
-        Text = "Lantern Direct";
+        Text = "Lantern Bridge";
         BackColor = Color.FromArgb(247,247,249);
         var area = Screen.FromControl(this).WorkingArea;
         Size = new Size(Math.Min(1180, area.Width - 40), Math.Min(880, area.Height - 40));
@@ -64,7 +64,7 @@ public sealed partial class MainForm
     {
         using var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run");
         var (favorites,favoritesError)=favoriteStore.Snapshot();
-        return new { version="0.5.0",favorites,favoritesError,canSaveFavorite=desktopKnown&&!controllerMic&&favoritesError==null,connectionIssue=desktopIssue,connecting=desktopConnectCancel!=null,connectionAttempt=desktopAttempt,platform="windows", connected=ble.IsReady, device=lastDevice is null?null:FormatAddress(lastDevice.Address), deviceName=lastDevice?.Name,
+        return new { version="0.6.0",favorites,favoritesError,canSaveFavorite=desktopKnown&&!controllerMic&&favoritesError==null,connectionIssue=desktopIssue,connecting=desktopConnectCancel!=null,connectionAttempt=desktopAttempt,platform="windows", connected=ble.IsReady, device=lastDevice is null?null:FormatAddress(lastDevice.Address), deviceName=lastDevice?.Name,
             on=desktopOn, brightness=brightness.Value, rgb=$"{selectedColor.R:X2}{selectedColor.G:X2}{selectedColor.B:X2}",mic=controllerMic,
             bridge=homeKit!=null,pairingReady=pairingCode!=null,autostart=key?.GetValue("LanternDirectHomeKit") is string,
             devices=found.Values.Select(x=>new {address=FormatAddress(x.Address),name=x.Name,rssi=x.RSSI}).ToArray(),effects=catalog,

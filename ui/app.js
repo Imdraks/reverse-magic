@@ -28,8 +28,8 @@ async function rpc(action,data={}){
   const response=await fetch('/api/'+action,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(data),signal:AbortSignal.timeout(timeout)});
   const result=await response.json();if(!response.ok||!result.ok)throw new Error(result.error||'Opération impossible.');return result.result;
 }
-let state={connected:false,bridge:false,on:false,brightness:100,rgb:'FFB340',mic:false,devices:[],effects:[],platform:'linux'},pending=false,busyAction='',toastTimer,activePage='overview',effectSignature='';
-const titles={overview:['Vue d’ensemble','La lumière, simplement.','Un peu de couleur. Une autre atmosphère.'],ambience:['Ambiances','À chaque instant, sa couleur.','Choisissez une teinte. Laissez le reste s’effacer.'],home:['Maison','Tout naturellement, ensemble.','Votre lumière trouve sa place dans Maison.'],devices:['Appareils','Le début d’une belle connexion.','Retrouvez vos LED et rapprochez les choses.']};
+let state={connected:false,bridge:false,on:false,brightness:100,rgb:'FFB340',mic:false,devices:[],effects:[],platform:'linux'},pending=false,busyAction='',toastTimer,activePage='gateway',effectSignature='';
+const titles={gateway:['Le pont','Votre maison, réunie.','Un pont local. Des appareils qui se retrouvent dans Maison.'],overview:['Vue d’ensemble','La lumière, simplement.','Un peu de couleur. Une autre atmosphère.'],ambience:['Ambiances','À chaque instant, sa couleur.','Choisissez une teinte. Laissez le reste s’effacer.'],home:['Maison','Tout naturellement, ensemble.','Votre lumière trouve sa place dans Maison.'],devices:['Appareils','Le début d’une belle connexion.','Retrouvez vos LED et rapprochez les choses.']};
 function openPage(page){
   activePage=page;document.querySelectorAll('.page').forEach(el=>el.classList.toggle('active',el.id==='page-'+page));
   document.querySelectorAll('.nav-item').forEach(el=>{el.classList.toggle('active',el.dataset.page===page);el.setAttribute('aria-current',el.dataset.page===page?'page':'false');});
@@ -48,6 +48,7 @@ async function act(action,data={},success){
 function range(id,value){const el=$(id);if(!el.matches(':active')&&!pending)el.value=value;el.style.setProperty('--fill',el.value+'%');}
 function render(next){
   state={...state,...next};
+  $('gateway-command').textContent=state.platform==='windows'?'node.exe gateway/cli.js init --config bridge.json':'./lantern gateway init --config bridge.json';
   $('connection-text').textContent=state.connected?(state.deviceName||'LED connectées'):'Non connecté';
   $('connection-pill').classList.toggle('online',state.connected);
   $('light-name').textContent=state.deviceName||'Lumière principale';
@@ -133,4 +134,4 @@ const savedTheme=localStorage.getItem('lantern-theme');if(savedTheme)document.do
 const quit=async()=>{if(confirm('Quitter Lantern et arrêter le pont Maison de cette application ?')){await rpc('quit');toast('Lantern est arrêté. Vous pouvez fermer cette fenêtre.');}};
 $('quit').onclick=quit;$('quit-top').onclick=quit;
 async function refresh(){try{render(await rpc('state'));}catch(error){$('status-text').textContent=error.message;}}
-render(state);refresh();setInterval(()=>{if(!document.hidden)refresh();},1800);
+openPage('gateway');render(state);refresh();setInterval(()=>{if(!document.hidden)refresh();},1800);

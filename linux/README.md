@@ -1,4 +1,4 @@
-# Lantern Direct — Linux / Raspberry Pi, terminal et Maison
+# Lantern Bridge — Linux / Raspberry Pi, terminal et Maison
 
 Pont HomeKit sans interface graphique pour les LED Magic Lantern : allumage, luminosité et couleur dans Maison sur iPhone. Le Raspberry Pi remplace le PC Windows et doit rester alimenté, connecté au réseau et à portée Bluetooth. Aucun écran, session graphique ou compte cloud nécessaire.
 
@@ -61,7 +61,7 @@ Le terminal affiche le QR et le code numérique. Sur l'iPhone : **Maison → + �
 
 Pi et iPhone doivent être sur le même réseau local, sans isolation des clients Wi-Fi. Le serveur annonce lui-même son service mDNS ; Avahi n'est pas nécessaire. Si un pare-feu est actif, autoriser TCP **51827** et UDP **5353** sur le réseau local. Aucune redirection de port Internet. Ctrl+C ferme le pont et libère la connexion Bluetooth.
 
-L'app iOS Lantern Direct n'est pas nécessaire pour Maison. Pour le contrôle distant et certaines automatisations, Apple exige un concentrateur compatible, tel que HomePod ou Apple TV. Les effets RGBIC, les segments et la musique ne sont pas exposés dans la lampe HomeKit standard.
+Aucune application supplémentaire sur l’iPhone n’est nécessaire pour Maison. Pour le contrôle distant et certaines automatisations, Apple exige un concentrateur compatible, tel que HomePod ou Apple TV. Les effets RGBIC, les segments et la musique ne sont pas exposés dans la lampe HomeKit standard.
 
 ## Démarrer automatiquement, même sans session SSH
 
@@ -99,7 +99,7 @@ Arrêter le service Maison avant ces commandes : le contrôleur accepte une liai
 ./lantern off --device AA:BB:CC:DD:EE:FF
 ```
 
-Le rouge/vert est corrigé en GRB comme sous Windows/iOS. Les codes d'effets et de scènes et la présence du micro dépendent du contrôleur ; le catalogue d'origine est dans `windows/effects.json` dans les sources. Le terminal ne capte pas le microphone ou le son du Pi.
+Le rouge/vert est corrigé en GRB comme sous Windows. Les codes d'effets et de scènes et la présence du micro dépendent du contrôleur ; le catalogue d'origine est dans `windows/effects.json` dans les sources. Le terminal ne capte pas le microphone ou le son du Pi.
 
 ## Stockage et dépannage
 
@@ -150,3 +150,7 @@ Pour installer aussi le raccourci du menu des applications :
 Pour ajouter le raccourci à une installation existante : `./lantern desktop-install`. Conserver le dossier du programme à son emplacement ; après un déplacement, recréer le raccourci. Pour le retirer, supprimer `~/.local/share/applications/lantern-direct.desktop` (ou son équivalent sous `$XDG_DATA_HOME`). Le raccourci ouvre le même GUI local. Il ne modifie pas le service systemd.
 
 La vérification des nouvelles versions se lance explicitement dans Appareils et consulte les releases publiques GitHub, versions de test incluses. Aucun téléchargement ou remplacement automatique. Le bouton Téléchargements ouvre la page des releases ; une connexion Internet est nécessaire pour ces deux actions.
+
+## Pont multi-appareils
+
+Pour réunir plusieurs produits et protocoles sous un même appairage Maison, utiliser `./lantern gateway` et `./lantern gateway-service`. Voir [le guide et la migration](../docs/GATEWAY.md). Les commandes LED de ce document restent disponibles comme module Magic Lantern.

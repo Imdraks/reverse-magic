@@ -1,4 +1,4 @@
-# Lantern Direct — Windows
+# Lantern Bridge — Windows
 
 Client natif Windows du protocole BLE Magic Lantern 6.11.10. Version Windows x64, **Windows 10 version 2004 ou ultérieure / Windows 11**, avec adaptateur Bluetooth LE fonctionnel. Exécutable autonome .NET 10 ; aucun runtime .NET séparé n’est nécessaire. Le pont Maison sert HomeKit sur votre réseau local, sans compte ni cloud.
 
@@ -26,7 +26,7 @@ dotnet run --project windows-tests/ProtocolChecks.csproj
 dotnet publish windows/LanternDirect.csproj -c Release -r win-x64 -o output/windows
 ```
 
-Le projet active le ciblage Windows pour permettre la compilation croisée. Les dépendances Microsoft Windows et WinRT sont restaurées depuis NuGet. Le format des trames et leur provenance sont décrits dans `../ios/PROTOCOL.md`.
+Le projet active le ciblage Windows pour permettre la compilation croisée. Les dépendances Microsoft Windows et WinRT sont restaurées depuis NuGet. Le format des trames et leur provenance sont décrits dans [docs/protocols/magic-lantern.md](../docs/protocols/magic-lantern.md).
 
 ## Patch v0.1.1
 
@@ -57,3 +57,7 @@ La désinstallation retire le programme et ses raccourcis, mais conserve `%LOCAL
 Les favoris mémorisent une couleur ou une animation avec luminosité et vitesse (jusqu’à 32). Enregistrer depuis la vue d’ensemble ; le même nom remplace un favori et son application allume la lumière. Les données restent dans `favorites.json` dans le profil utilisateur ; un fichier illisible n’est pas écrasé. Le mode musical ne peut pas être mémorisé.
 
 Le GUI propose deux tentatives de connexion, annulables, pour les erreurs transitoires. Une reconnexion seule ne rejoue pas les réglages. Le diagnostic inspecte adaptateur, support BLE et radio ; une autre application connectée ne peut pas être confirmée. La vérification des versions consulte GitHub uniquement sur demande et inclut les releases de test ; le téléchargement reste manuel.
+
+## Pont multi-appareils
+
+Le nouveau cœur Lantern Bridge et ses modules Magic Lantern BLE / Shelly Gen 1 sont décrits dans [le guide du pont](../docs/GATEWAY.md). Configuration via terminal ; le GUI ci-dessus reste le module LED individuel. Le nouveau pont utilise un stockage séparé et nécessite un appairage Maison distinct.

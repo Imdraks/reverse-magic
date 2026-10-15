@@ -5,7 +5,11 @@ function createAccessory(engine, { deviceId, name = 'Mes LED', username, pincode
     .setCharacteristic(Characteristic.Manufacturer, 'Lantern Direct')
     .setCharacteristic(Characteristic.Model, 'Magic Lantern Bluetooth')
     .setCharacteristic(Characteristic.SerialNumber, deviceId)
-    .setCharacteristic(Characteristic.FirmwareRevision, '0.5.0');
+    .setCharacteristic(Characteristic.FirmwareRevision, '0.6.0');
+  const detach = attachLight(engine, accessory, name);
+  return { accessory, publish: () => accessory.publish({ username, pincode, setupID, port, bind, category: Categories.LIGHTBULB, advertiser: MDNSAdvertiser.CIAO }), stop: async () => { detach(); await accessory.unpublish(); } };
+}
+function attachLight(engine, accessory, name) {
   const light = accessory.addService(Service.Lightbulb, name);
   const mapping = { on: Characteristic.On, brightness: Characteristic.Brightness, hue: Characteristic.Hue, saturation: Characteristic.Saturation };
   for (const [key, type] of Object.entries(mapping)) {
@@ -19,6 +23,6 @@ function createAccessory(engine, { deviceId, name = 'Mes LED', username, pincode
     if (!engine.closed) for (const [key, type] of Object.entries(mapping)) light.updateCharacteristic(type, state[key]);
   });
   engine.on('state', update);
-  return { accessory, publish: () => accessory.publish({ username, pincode, setupID, port, bind, category: Categories.LIGHTBULB, advertiser: MDNSAdvertiser.CIAO }), stop: async () => { engine.off('state', update); await accessory.unpublish(); } };
+  return () => engine.off('state', update);
 }
-module.exports = { createAccessory };
+module.exports = { createAccessory, attachLight };

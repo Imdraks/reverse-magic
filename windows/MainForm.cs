@@ -30,7 +30,7 @@ public sealed partial class MainForm : Form
 
     public MainForm(bool homekitAtStartup = false)
     {
-        Text = "Lantern Direct — LED Bluetooth";
+        Text = "Lantern Bridge — LED Bluetooth";
         Width = 610; Height = 840;
         MinimumSize = new Size(590, 640);
         StartPosition = FormStartPosition.CenterScreen;
@@ -173,7 +173,7 @@ public sealed partial class MainForm : Form
             try { await action(); }
             catch (Exception e)
             {
-                if (!IsDisposed) { status.Text = e is OperationCanceledException ? "Opération expirée ou connexion interrompue." : e.Message; MessageBox.Show(this, status.Text, "Lantern Direct", MessageBoxButtons.OK, MessageBoxIcon.Information); }
+                if (!IsDisposed) { status.Text = e is OperationCanceledException ? "Opération expirée ou connexion interrompue." : e.Message; MessageBox.Show(this, status.Text, "Lantern Bridge", MessageBoxButtons.OK, MessageBoxIcon.Information); }
             }
             finally { if (!IsDisposed) { busy = false; connectionPanel.Enabled = homeKit == null && !reconnecting; controls.Enabled = ble.IsReady && homeKit == null && !reconnecting; UseWaitCursor = false; } }
         };

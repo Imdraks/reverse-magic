@@ -30,8 +30,7 @@ Aucune installation de Node.js ou de .NET nécessaire.
 Le PC doit rester allumé, connecté au réseau, dans votre session Windows,
 à portée Bluetooth, sans mise en veille. Si le PC dort ou si les LED sont
 injoignables, Maison affiche « Aucune réponse ». La reconnexion est automatique.
-Vous n’avez pas besoin de l’application iOS Lantern Direct pour Maison.
-L’IPA fourni séparément reste destiné au contrôle Bluetooth direct.
+Aucune application supplémentaire sur l’iPhone n’est nécessaire pour Maison.
 Pour contrôler Maison à distance ou exécuter certaines automatisations,
 Apple exige un concentrateur compatible, par exemple HomePod ou Apple TV.
 
@@ -61,3 +60,7 @@ généralement présent sur Windows 11. S’il manque, les commandes classiques
 restent disponibles ; installer le runtime depuis le site Microsoft.
 Les ambiances du tableau de bord sont des teintes fixes ; les animations
 du contrôleur sont accessibles séparément dans la section Ambiances.
+
+PONT MULTI-APPAREILS
+Le nouveau pont Lantern Bridge se configure selon docs/GATEWAY.md.
+Ce guide historique décrit le pont individuel du module Magic Lantern.

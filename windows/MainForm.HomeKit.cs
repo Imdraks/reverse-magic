@@ -5,7 +5,7 @@ public sealed partial class MainForm
 {
     private HomeKitHost? homeKit;
     private readonly Label homeStatus = new() { AutoSize = true, MaximumSize = new Size(530, 0), Text = "Maison : arrêté." };
-    private readonly NotifyIcon tray = new() { Icon = SystemIcons.Application, Text = "Lantern Direct — Maison" };
+    private readonly NotifyIcon tray = new() { Icon = SystemIcons.Application, Text = "Lantern Bridge — Maison" };
     private readonly SemaphoreSlim homeWrites = new(1);
     private string? pairingCode, pairingQR;
     private bool reconnecting, quitting;

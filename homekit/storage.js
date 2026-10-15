@@ -10,7 +10,7 @@ async function writeJSON(file, value) {
 async function loadJSON(file, fallback) {
   try { return JSON.parse(await fs.readFile(file, 'utf8')); } catch (error) { if (error.code === 'ENOENT') return fallback(); throw error; }
 }
-async function loadStorage(directory) {
+async function loadIdentity(directory) {
   await fs.mkdir(directory, { recursive: true, mode: 0o700 });
   const file = path.join(directory, 'identity.json');
   const identity = await loadJSON(file, async () => {
@@ -21,9 +21,16 @@ async function loadStorage(directory) {
     await writeJSON(file, result); return result;
   });
   if (!/^(?:[0-9A-F]{2}:){5}[0-9A-F]{2}$/.test(identity.username) || !/^\d{3}-\d{2}-\d{3}$/.test(identity.pincode) || !/^[A-Z0-9]{4}$/.test(identity.setupID)) throw new Error('Invalid saved HomeKit identity');
+  return identity;
+}
+async function loadLightStorage(directory) {
+  await fs.mkdir(directory, { recursive: true, mode: 0o700 });
   const state = await loadJSON(path.join(directory, 'state.json'), () => ({ ...DEFAULT_STATE }));
   validatePatch(state);
   if (Object.keys(state).length !== 4) throw new Error('Invalid saved light state');
-  return { identity, state, save: value => writeJSON(path.join(directory, 'state.json'), value) };
+  return { state, save: value => writeJSON(path.join(directory, 'state.json'), value) };
 }
-module.exports = { loadStorage };
+async function loadStorage(directory) {
+  return { identity: await loadIdentity(directory), ...await loadLightStorage(directory) };
+}
+module.exports = { loadStorage, loadIdentity, loadLightStorage };

@@ -7,12 +7,53 @@ New-Item -Path $runKey -Force | Out-Null
 New-ItemProperty -Path $runKey -Name LanternDirectHomeKit -Value '"C:\old-portable\LanternDirect.exe" --homekit' -PropertyType String -Force | Out-Null
 $installed = Start-Process -FilePath $setup -ArgumentList '/S' -Wait -PassThru
 if ($installed.ExitCode -ne 0) { throw "Installer exit code: $($installed.ExitCode)" }
-foreach ($file in @('LanternDirect.exe','node.exe','homekit\server.js','Uninstall.exe')) {
+foreach ($file in @('LanternDirect.exe','node.exe','homekit\server.js','gateway\cli.js','gateway\bridge.example.json','docs\GATEWAY.md','Uninstall.exe')) {
     if (-not (Test-Path (Join-Path $root $file))) { throw "Missing installed file: $file" }
 }
 $nodeVersion = & (Join-Path $root 'node.exe') --version
 if ($nodeVersion -ne 'v24.19.0') { throw "Unexpected bundled Node runtime" }
-$shortcut = Join-Path ([Environment]::GetFolderPath('Programs')) 'Lantern Direct\Lantern Direct.lnk'
+& (Join-Path $root 'node.exe') (Join-Path $root 'gateway\cli.js') check --config (Join-Path $root 'gateway\bridge.example.json')
+if ($LASTEXITCODE -ne 0) { throw 'Packaged gateway configuration check failed' }
+$workerInfo = [Diagnostics.ProcessStartInfo]::new((Join-Path $root 'LanternDirect.exe'))
+$workerInfo.UseShellExecute = $false
+$workerInfo.CreateNoWindow = $true
+$workerInfo.RedirectStandardInput = $true
+$workerInfo.RedirectStandardOutput = $true
+$workerInfo.ArgumentList.Add('--adapter-worker')
+$workerInfo.ArgumentList.Add('--device')
+$workerInfo.ArgumentList.Add('AA:BB:CC:DD:EE:FF')
+$worker = [Diagnostics.Process]::Start($workerInfo)
+try {
+    $worker.StandardInput.WriteLine('{"kind":"request","id":1,"op":"status"}')
+    $line = $worker.StandardOutput.ReadLineAsync()
+    if (-not $line.Wait(10000)) { throw 'Native worker did not answer status' }
+    $reply = $line.Result | ConvertFrom-Json
+    if (-not $reply.ok -or $reply.id -ne 1 -or $reply.result.connected -isnot [bool]) { throw 'Invalid native worker status' }
+    $worker.StandardInput.Close()
+    if (-not $worker.WaitForExit(10000) -or $worker.ExitCode -ne 0) { throw 'Native worker did not close cleanly at EOF' }
+} finally {
+    if (-not $worker.HasExited) { $worker.Kill($true); $worker.WaitForExit() }
+    $worker.Dispose()
+}
+$leaseInfo = [Diagnostics.ProcessStartInfo]::new((Join-Path $root 'LanternDirect.exe'))
+$leaseInfo.UseShellExecute = $false
+$leaseInfo.CreateNoWindow = $true
+$leaseInfo.RedirectStandardInput = $true
+$leaseInfo.RedirectStandardOutput = $true
+$leaseInfo.ArgumentList.Add('--gateway-lease')
+$lease = [Diagnostics.Process]::Start($leaseInfo)
+try {
+    $line = $lease.StandardOutput.ReadLineAsync()
+    if (-not $line.Wait(10000) -or $line.Result -ne 'ready') { throw 'Gateway lease was not ready' }
+    $guard = [Threading.Mutex]::OpenExisting('LanternDirect.CurrentUser.' + $env:USERNAME)
+    $guard.Dispose()
+    $lease.StandardInput.Close()
+    if (-not $lease.WaitForExit(10000) -or $lease.ExitCode -ne 0) { throw 'Gateway lease did not close' }
+} finally {
+    if (-not $lease.HasExited) { $lease.Kill($true); $lease.WaitForExit() }
+    $lease.Dispose()
+}
+$shortcut = Join-Path ([Environment]::GetFolderPath('Programs')) 'Lantern Bridge\Lantern Bridge.lnk'
 if (-not (Test-Path $shortcut)) { throw 'Missing Start menu shortcut' }
 $runValue = (Get-ItemProperty -Path $runKey -Name LanternDirectHomeKit).LanternDirectHomeKit
 if ($runValue -ne ('"' + (Join-Path $root 'LanternDirect.exe') + '" --homekit')) { throw 'Autostart path was not migrated' }
@@ -30,10 +71,13 @@ try {
     if (-not $app.HasExited) { Stop-Process -Id $app.Id -Force; $app.WaitForExit() }
 }
 New-Item -ItemType Directory -Path (Join-Path $settings 'homekit\installer-test') -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $settings 'gateway\installer-test') -Force | Out-Null
 $favoriteFile = Join-Path $settings 'favorites.json'
 $pairingFile = Join-Path $settings 'homekit\installer-test\preserve.txt'
 Set-Content -Path $favoriteFile -Value '[]' -NoNewline
 Set-Content -Path $pairingFile -Value 'pairing storage preservation test' -NoNewline
+$gatewayFile = Join-Path $settings 'gateway\installer-test\preserve.txt'
+Set-Content -Path $gatewayFile -Value 'gateway storage preservation test' -NoNewline
 $removed = Start-Process -FilePath (Join-Path $root 'Uninstall.exe') -ArgumentList '/S' -Wait -PassThru
 if ($removed.ExitCode -ne 0) { throw 'Uninstaller failed' }
 for ($i=0; $i -lt 40 -and (Test-Path (Join-Path $root 'LanternDirect.exe')); $i++) { Start-Sleep -Milliseconds 500 }
@@ -41,5 +85,6 @@ if (Test-Path (Join-Path $root 'LanternDirect.exe')) { throw 'Program was not re
 if (Test-Path $shortcut) { throw 'Start menu shortcut was not removed' }
 if ((Get-Content -Raw $favoriteFile) -ne '[]') { throw 'Favorites were changed by uninstall' }
 if ((Get-Content -Raw $pairingFile) -ne 'pairing storage preservation test') { throw 'Pairing storage was changed by uninstall' }
+if ((Get-Content -Raw $gatewayFile) -ne 'gateway storage preservation test') { throw 'Gateway storage was changed by uninstall' }
 if (Get-ItemProperty -Path $runKey -Name LanternDirectHomeKit -ErrorAction SilentlyContinue) { throw 'Installed autostart registration was not removed' }
 Write-Host 'Windows installer, bundled runtime, app startup, autostart migration, shortcuts, uninstall and user-data preservation verified.'
