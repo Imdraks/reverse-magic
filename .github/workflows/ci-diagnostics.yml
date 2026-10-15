@@ -33,6 +33,7 @@ jobs:
           message='\n'.join(result.stdout.splitlines()[-90:])
           message=re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',message)
           message=re.sub(r'\b\d{3}-\d{2}-\d{3}\b','[redacted pairing code]',message)
+          message=message[-3200:]
           message=message.replace('%','%25').replace('\r','%0D').replace('\n','%0A')
           print('::warning title=CI test diagnostic::'+message)
           PY

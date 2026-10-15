@@ -60,6 +60,7 @@ jobs:
           if path.exists():
               text='\n'.join(path.read_text().splitlines()[-90:])
               text=re.sub(r'\b\d{3}-\d{2}-\d{3}\b','[redacted pairing code]',text)
+              text=text[-3200:]
               text=text.replace('%','%25').replace('\r','%0D').replace('\n','%0A')
               print('::warning title=Linux test failure::'+text)
           PY
