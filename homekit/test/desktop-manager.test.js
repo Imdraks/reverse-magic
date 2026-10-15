@@ -24,7 +24,7 @@ test('desktop bridge: real HTTP light, server-side Home lock, rooms, partial gro
     const saved=await manager.command('save-device',draft),id=saved.devices[0].id;
     await manager.command('start');assert.deepEqual(writes,[],'starting Home must not command a Shelly');
     const identity=await fs.readFile(path.join(manager.storage(await manager.load()),'identity.json'));
-    for(const action of ['save-device','remove-device','settings','test-device','refresh-devices','apply','apply-group','backup','restore'])await assert.rejects(manager.command(action,{...draft,id,on:false,patch:{on:false},password:'a long phrase to protect'}),/Maison est actif/);
+    for(const action of ['save-device','remove-device','settings','test-device','discover-lsc','refresh-devices','apply','apply-group','backup','restore'])await assert.rejects(manager.command(action,{...draft,id,on:false,patch:{on:false},password:'a long phrase to protect'}),/Maison est actif/);
     assert.deepEqual(writes,[],'API calls bypassing disabled controls must still be blocked');
     const external=await new DesktopManager(directory).init();assert.equal((await external.snapshot()).external,true);
     await assert.rejects(external.command('save-device',draft),/Maison est actif/);await assert.rejects(external.command('stop'),/autre processus/);

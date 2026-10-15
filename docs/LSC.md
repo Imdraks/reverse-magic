@@ -16,6 +16,16 @@ Voir [l’étude et les sources](research/lsc-smart-connect.md). La référence 
 
 Dans **Le pont**, Maison désactivé, choisir **Ajouter un éclairage → LSC / Tuya**. L’assistant accepte l’IP, la version, le profil et les identifiants locaux, ainsi qu’un mapping DP avancé. Le bouton d’inspection est en lecture seule ; aucun profil candidat n’est appliqué automatiquement. Les identifiants sont conservés dans le stockage privé de cette installation, séparée du CLI. Voir [le guide de l’interface](DESKTOP.md). Les paragraphes suivants décrivent aussi la configuration par variables pour le terminal.
 
+## Retrouver une ampoule depuis Lantern
+
+Maison doit être désactivé avant l’ajout, la recherche ou l’import. Dans **Ajouter un éclairage → LSC / Tuya**, choisir **Rechercher sur le réseau**. Pendant huit secondes, Lantern écoute les annonces UDP sur les ports 6666, 6667 et 7000. Il ne transmet aucune commande et ne balaie pas les adresses du réseau. Choisir **Utiliser pour mon éclairage** pour renseigner l’IP, l’identifiant et la version annoncée. La marque et la catégorie ne sont pas vérifiables par ces annonces : ne sélectionner que son éclairage LSC.
+
+Les annonces ne contiennent pas la clé locale. Si vous possédez déjà un fichier `devices.json` de TinyTuya, ouvrir **Importer mes identifiants locaux**, puis choisir le fichier et l’éclairage. L’import accepte une liste JSON ou un objet contenant une liste `devices`, avec `id`/`dev_id` et `key`/`local_key`. Les champs `name`, `ip` et `version` sont facultatifs. Limites : 1 Mo, 256 entrées, identifiants uniques. Le fichier est lu dans la fenêtre ; les clés ne sont pas envoyées à un service cloud ni incluses dans l’état du gestionnaire. Rien n’est enregistré avant la confirmation **Enregistrer**. Fermer la fenêtre d’ajout efface les identifiants importés de cette interface. Protéger également le fichier original, qui contient les clés en clair.
+
+L’import ne confirme ni le type d’appareil, ni la validité de sa clé, ni son profil. Vérifier l’adresse/version si elles ne sont pas dans le fichier, puis **Inspecter les DP sans modifier la lumière**, sélectionner le profil adapté, tester et enregistrer. Réactiver ensuite Maison.
+
+Une ampoule neuve qui n’est pas associée au Wi-Fi ne sera pas découverte par ce mécanisme. Un appareil silencieux, une isolation Wi-Fi/VLAN ou le pare-feu peuvent aussi empêcher sa détection ; les champs manuels restent disponibles. Autoriser la réception UDP locale pour Lantern/son runtime Node si nécessaire. Aucun port n’est à ouvrir sur Internet. L’association Wi-Fi/Bluetooth et l’obtention des clés depuis un compte LSC ne sont pas encore implémentées ; voir les [prérequis d’activation vérifiés](research/lsc-smart-connect.md#installation-entièrement-depuis-lantern--prérequis-vérifiés).
+
 ## Préparer un appareil
 
 Il faut connaître **son IP locale**, **son identifiant Tuya**, **sa clé locale de 16 octets**, **sa version de protocole** et **ses DP**. Réserver son IP dans le routeur évite de perdre la connexion après un changement DHCP. Protocoles acceptés : **3.1, 3.3, 3.4 et 3.5**. La version 3.2 n’est pas activée dans ce module. La version doit correspondre au firmware, elle ne se choisit pas arbitrairement. Tuya 3.1 chiffre les commandes, mais certains messages d’état sont en clair selon ce protocole ancien.

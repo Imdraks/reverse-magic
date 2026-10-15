@@ -6,11 +6,11 @@ Le projet se concentre sur l’éclairage : ampoules, rubans, luminaires et cont
 
 ## Installer
 
-[**Télécharger v0.8.1 — mémoire des profils, version de test**](https://github.com/Imdraks/reverse-magic/releases/tag/v0.8.1)
+[**Télécharger v0.8.2 — ajout LSC guidé, version de test**](https://github.com/Imdraks/reverse-magic/releases/tag/v0.8.2)
 
-- **Windows** : [installateur](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.1/LanternDirect-Setup.exe) ou [paquet portable complet](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.1/LanternDirect-Windows-HomeKit.zip).
-- **Raspberry Pi OS 64 bits** : [ARM64](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.1/LanternDirect-Linux-arm64.tar.gz), installation terminal et service sans écran.
-- **PC Linux** : [x64](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.1/LanternDirect-Linux-x64.tar.gz), terminal, service et interface locale.
+- **Windows** : [installateur](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.2/LanternDirect-Setup.exe) ou [paquet portable complet](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.2/LanternDirect-Windows-HomeKit.zip).
+- **Raspberry Pi OS 64 bits** : [ARM64](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.2/LanternDirect-Linux-arm64.tar.gz), installation terminal et service sans écran.
+- **PC Linux** : [x64](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.2/LanternDirect-Linux-x64.tar.gz), terminal, service et interface locale.
 
 Les noms techniques `LanternDirect` et les dossiers de données sont conservés pour faciliter les mises à jour. L’installateur contient Node et le pont ; le runtime .NET est inclus. Sous Linux, installer Python/BlueZ selon [le guide](linux/README.md). WebView2 est nécessaire pour le GUI Windows moderne.
 

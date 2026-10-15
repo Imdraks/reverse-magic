@@ -12,6 +12,7 @@ const {validateFields}=require('./observed-engine');
 const {validatePatch,DEFAULT_STATE}=require('../homekit/light-engine');
 const {loadLightStorage}=require('../homekit/storage');
 const {ProfileStore}=require('./profile-store');
+const {discoverLsc}=require('./lsc-discovery');
 const scrypt=promisify(crypto.scrypt);
 const MAX=2*1024*1024;
 class UserError extends Error {}
@@ -27,11 +28,11 @@ function validateProject(project){
   return project;
 }
 class DesktopManager {
-  constructor(directory,{gatewayFactory,adapterFactory,clock=()=>new Date().toISOString()}={}){
+  constructor(directory,{gatewayFactory,adapterFactory,discovery=discoverLsc,clock=()=>new Date().toISOString()}={}){
     this.directory=path.resolve(directory);this.installation=path.join(this.directory,'installation');
     this.gatewayFactory=gatewayFactory||((config,storage,options)=>new (require('./desktop-runtime').DesktopRuntime)(config,storage,options));
     this.adapterFactory=adapterFactory||((device)=>adapters[device.adapter].create(device,{}));
-    this.clock=clock;this.logs=[];this.health=new Map();this.running=null;this.closed=false;this.activeAdapters=new Set();
+    this.clock=clock;this.discovery=discovery;this.discoveryAbort=null;this.logs=[];this.health=new Map();this.running=null;this.closed=false;this.activeAdapters=new Set();
   }
   async init(){await fs.mkdir(this.directory,{recursive:true,mode:0o700});await this.locked(async()=>{
     try{await fs.access(this.installation);}catch(error){if(error.code!=='ENOENT')throw error;try{await fs.rename(path.join(this.directory,'installation.previous'),this.installation);}catch(recovery){if(recovery.code!=='ENOENT')throw recovery;}}
@@ -102,6 +103,7 @@ class DesktopManager {
         if(this.running){const gateway=this.running;await gateway.stop();this.running=null;this.event('Maison désactivé. Les modifications sont à nouveau accessibles.');}return this.snapshot();
       }
       await this.editable(project);
+      if(this.closed)fail('Gestionnaire arrêté.');
       if(action==='start'){
         if(!project.config.devices.length)fail('Ajoutez au moins un éclairage.');
         this.environment(project);
@@ -116,6 +118,11 @@ class DesktopManager {
         project.config.name=label(data.name);if(!project.config.name)fail('Nom du pont requis.');await this.save(project);
       }else if(action==='test-device'){
         const device=data.draft?this.build(data.draft,project):project.config.devices.find(d=>d.id===data.id);if(!device)fail('Éclairage introuvable.');return this.test(device,project,Boolean(data.probe),!data.draft);
+      }else if(action==='discover-lsc'){
+        this.discoveryAbort=new AbortController();
+        try{return await this.discovery({signal:this.discoveryAbort.signal});}
+        catch{fail(this.closed?'Recherche annulée.':'Découverte indisponible. Vérifiez les autorisations réseau et les ports UDP 6666, 6667 et 7000.');}
+        finally{this.discoveryAbort=null;}
       }else if(action==='refresh-devices'){
         await this.batch(project.config.devices,async device=>{try{await this.test(device,project);this.observe([{id:device.id,online:true}]);}catch{this.observe([{id:device.id,online:false}]);}});
       }else if(action==='apply-group'){
@@ -197,6 +204,6 @@ class DesktopManager {
     }finally{await fs.rm(stage,{recursive:true,force:true});}
     this.health.clear();this.event('Configuration et identité Maison restaurées. Gardez l’ancien pont éteint.');return this.snapshot();
   }
-  async close(){this.closed=true;const runtime=this.running;await Promise.allSettled([...this.activeAdapters].map(adapter=>adapter.close()));if(runtime)await runtime.stop();if(this.running===runtime)this.running=null;}
+  async close(){this.closed=true;this.discoveryAbort?.abort();const runtime=this.running;await Promise.allSettled([...this.activeAdapters].map(adapter=>adapter.close()));if(runtime)await runtime.stop();if(this.running===runtime)this.running=null;}
 }
 module.exports={DesktopManager,UserError,MAX};

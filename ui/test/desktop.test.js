@@ -107,6 +107,31 @@ test('desktop installation: add and edit a real HTTP light, Home locks API and U
     const api=async(action,data={})=>{const response=await fetch(origin+'/api/'+action,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(data)});return {status:response.status,...await response.json()};};
     browser=await chromium.launch({executablePath:process.env.LANTERN_CHROMIUM||'/usr/bin/chromium',headless:true,args:['--no-sandbox']});const page=await browser.newPage({viewport:{width:1320,height:1020},acceptDownloads:true});const pageErrors=[];page.on('pageerror',error=>pageErrors.push(error.message));
     await page.goto(origin+'/#key='+token);await page.waitForFunction(()=>!document.getElementById('gateway-add').disabled);
+    // Configure LSC locally through the real private RPC and UDP discovery path.
+    await page.locator('#gateway-add').click();await page.locator('#new-adapter').selectOption('lsc-tuya-light');
+    await page.locator('#new-lsc-fields details').first().locator('summary').click();
+    const importKey='0123456789abcdef';
+    await page.locator('#lsc-import-file').setInputFiles({name:'devices.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify([{id:'browser-light-123',key:importKey,name:'LSC bureau',ip:'127.0.0.1',version:'3.5'}]))});
+    await page.locator('#lsc-import-row:not([hidden])').waitFor();await page.locator('#lsc-import-device').selectOption('0');
+    assert.equal(await page.locator('#new-local-key').inputValue(),importKey);assert.equal(await page.locator('#new-name').inputValue(),'LSC bureau');
+    assert.equal(await page.locator('#new-ip').inputValue(),'127.0.0.1');
+    assert.equal((await api('gateway-state')).result.gatewayResult.devices.length,0,'import must not add a device automatically');
+    const udp=require('node:dgram').createSocket('udp4'),{frame}=require('../../homekit/test/helpers/tuya-announcement');let broadcasts;
+    try{
+      const bytes=frame({gwId:'browser-light-123',ip:'127.0.0.1',version:'3.5'},{encrypted:true});
+      broadcasts=setInterval(()=>udp.send(bytes,6667,'127.0.0.1'),60);
+      await page.locator('#lsc-discover').click();await page.getByRole('button',{name:'Utiliser pour mon éclairage',exact:true}).waitFor({timeout:15000});
+      await page.getByRole('button',{name:'Utiliser pour mon éclairage',exact:true}).click();
+      assert.equal(await page.locator('#new-version').inputValue(),'3.5');assert.equal(await page.locator('#new-device-id').inputValue(),'browser-light-123');
+      assert.equal(await page.locator('#new-local-key').inputValue(),importKey,'discovery preserves a key only for the same identity');
+    }finally{clearInterval(broadcasts);udp.close();}
+    await page.locator('#close-device').click();await page.locator('#gateway-add').click();await page.locator('#new-adapter').selectOption('lsc-tuya-light');
+    assert.equal(await page.locator('#new-local-key').inputValue(),'');assert.equal(await page.locator('#lsc-import-device').locator('option').count(),0);
+    await page.locator('#new-lsc-fields details').first().locator('summary').click();
+    await page.locator('#lsc-import-file').setInputFiles({name:'devices.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify([{id:'duplicate-id',key:importKey},{id:'duplicate-id',key:importKey}]))});
+    await page.waitForFunction(()=>document.getElementById('lsc-import-status').textContent.includes('Fichier invalide'));
+    assert.equal(await page.locator('#new-local-key').inputValue(),'');
+    await page.locator('#close-device').click();
     await page.locator('#gateway-add').click();await page.locator('#new-name').fill('Lampe lecture');await page.locator('#new-room').fill('Salon');await page.locator('#new-adapter').selectOption('shelly-gen1-relay');await page.locator('#new-host').fill(`http://127.0.0.1:${relay.address().port}`);
     await page.locator('#new-test').click();await page.waitForFunction(()=>document.getElementById('new-test-result').textContent.includes('lecture réussies'));assert.deepEqual(writes,[],'assistant connection test must be read-only');
     await page.locator('#new-save').click();await page.locator('#device-dialog').waitFor({state:'hidden'});await page.getByRole('heading',{name:'Lampe lecture',exact:true}).waitFor();
@@ -114,7 +139,7 @@ test('desktop installation: add and edit a real HTTP light, Home locks API and U
     await page.locator('#gateway-toggle').click();await page.waitForFunction(()=>document.getElementById('gateway-toggle').textContent==='Désactiver Maison'&&!document.getElementById('gateway-toggle').disabled);
     for(const selector of ['#gateway-add','#group-on','#gateway-refresh'])assert.equal(await page.locator(selector).isDisabled(),true);
     assert.equal(await page.getByRole('button',{name:'Modifier',exact:true}).isDisabled(),true);
-    for(const [action,data] of [['gateway-save-device',{name:'Interdit'}],['gateway-apply-group',{on:true}],['gateway-restore-profile',{id}],['gateway-backup',{password:'a long enough phrase'}],['power',{on:true}],['scan',{all:false}]]){const reply=await api(action,data);assert.equal(reply.ok,false);assert.match(reply.error,/Maison est actif/);}
+    for(const [action,data] of [['gateway-save-device',{name:'Interdit'}],['gateway-discover-lsc',{}],['gateway-apply-group',{on:true}],['gateway-restore-profile',{id}],['gateway-backup',{password:'a long enough phrase'}],['power',{on:true}],['scan',{all:false}]]){const reply=await api(action,data);assert.equal(reply.ok,false);assert.match(reply.error,/Maison est actif/);}
     assert.deepEqual(writes,[]);
     await page.locator('#gateway-pairing').click();await page.locator('#pairing-dialog[open]').waitFor();const pairing=await page.locator('#pairing-code').textContent();await page.locator('#close-pairing').click();
     await page.locator('#gateway-toggle').click();await page.waitForFunction(()=>!document.getElementById('gateway-add').disabled);

@@ -1,5 +1,6 @@
 'use strict';
 let editingDevice=null,selectedRoom='*',gatewaySignature='',backupMode='backup';
+let lscImports=[],lscSetupGeneration=0;
 const textElement=(tag,text,className)=>Object.assign(document.createElement(tag),{textContent:text,...(className?{className}:{})});
 const gatewayLocked=()=>Boolean(state.bridge||state.gateway?.active);
 async function gatewayAction(action,data={}){const response=await act('gateway-'+action,data);return response?.gatewayResult;}
@@ -28,6 +29,8 @@ function renderGateway(){
   if(document.activeElement!==$('gateway-name'))$('gateway-name').value=gateway.config?.name||'Lantern Bridge';
   if(locked&&$('device-dialog').open){$('device-dialog').close();clearCredentials();toast('Maison est actif. Désactivez-le avant de modifier les appareils.');}
   if(locked&&$('backup-dialog').open){$('backup-dialog').close();$('backup-form').reset();}
+  for(const id of ['lsc-discover','lsc-import-file','lsc-import-device'])$(id).disabled=pending||locked;
+  for(const button of $('lsc-discovery-results').querySelectorAll('button'))button.disabled=pending||locked;
   const signature=JSON.stringify([devices,locked,pending,selectedRoom,gateway.logs]);
   if(signature===gatewaySignature)return;gatewaySignature=signature;
   const rooms=[...new Set(devices.map(d=>d.room==='Sans pièce'?'':d.room))].sort((a,b)=>a.localeCompare(b));
@@ -62,7 +65,7 @@ function renderGateway(){
 }
 function rgbToHsv(hex){const [r,g,b]=hex.slice(1).match(/../g).map(v=>parseInt(v,16)/255),max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min;let hue=0;if(d)hue=max===r?((g-b)/d)%6:max===g?(b-r)/d+2:(r-g)/d+4;return {hue:(hue*60+360)%360,saturation:max?d/max*100:0};}
 async function applyDevice(id,patch){const result=await gatewayAction('apply',{id,patch});if(result)toast(result.results.every(x=>x.ok)?'Commande confirmée.':'Commande non confirmée. Vérifiez la connexion.');}
-function clearCredentials(){for(const id of ['new-device-id','new-local-key','new-username','new-password'])$(id).value='';}
+function clearCredentials(){for(const id of ['new-device-id','new-local-key','new-username','new-password','lsc-import-file'])$(id).value='';lscImports=[];lscSetupGeneration++;$('lsc-import-device').replaceChildren();$('lsc-import-row').hidden=true;$('lsc-import-status').textContent='';$('lsc-discovery-results').replaceChildren();$('lsc-discovery-status').textContent='';for(const details of $('new-lsc-fields').querySelectorAll('details'))details.open=false;}
 function adapterFields(){const adapter=$('new-adapter').value;$('new-ble-fields').hidden=adapter!=='magic-lantern-ble';$('new-lsc-fields').hidden=adapter!=='lsc-tuya-light';$('new-shelly-fields').hidden=adapter!=='shelly-gen1-relay';}
 function openDevice(device=null){
   if(gatewayLocked())return toast('Désactivez Maison avant d’ajouter ou modifier un éclairage.');
@@ -91,6 +94,64 @@ function draftDevice(){
   }
   return draft;
 }
+$('lsc-discover').onclick=async()=>{
+  if(gatewayLocked()||pending)return;
+  const generation=lscSetupGeneration;$('lsc-discovery-results').replaceChildren();$('lsc-discovery-status').textContent='Recherche sur le réseau pendant 8 secondes…';
+  const result=await gatewayAction('discover-lsc');
+  if(generation!==lscSetupGeneration||!$('device-dialog').open||gatewayLocked())return;
+  $('lsc-discovery-status').textContent=result?result.message+(result.partial?' Certains ports ne sont pas accessibles ; la recherche est partielle.':''):'Recherche impossible. Vérifiez le réseau et les autorisations du pare-feu.';
+  for(const device of result?.devices||[]){
+    const row=textElement('div','','device-actions'),label=textElement('span',`${device.ip} · Tuya ${device.version} · ${device.deviceId}`),button=textElement('button','Utiliser pour mon éclairage','secondary');button.type='button';
+    button.onclick=()=>{
+      if(gatewayLocked()||pending)return;
+      // Do not reuse the previous device's key when changing the selected identity.
+      if($('new-device-id').value!==device.deviceId)$('new-local-key').value='';
+      $('new-ip').value=device.ip;$('new-version').value=device.version;$('new-device-id').value=device.deviceId;
+      $('lsc-discovery-status').textContent='Adresse, identifiant et version renseignés. Importez ou saisissez la clé locale, puis inspectez les DP avant de choisir un profil.';
+      $('new-local-key').focus();
+    };
+    row.append(label,button);$('lsc-discovery-results').append(row);
+  }
+};
+$('lsc-import-file').onchange=async()=>{
+  if(gatewayLocked()||pending)return;
+  const generation=lscSetupGeneration,file=$('lsc-import-file').files[0];lscImports=[];$('lsc-import-device').replaceChildren();$('lsc-import-row').hidden=true;
+  if(!file)return;
+  try{
+    if(file.size>1024*1024)throw Error();
+    const data=JSON.parse(await file.text()),rows=Array.isArray(data)?data:data?.devices;
+    if(generation!==lscSetupGeneration||gatewayLocked()||!$('device-dialog').open)return;
+    if(!Array.isArray(rows)||!rows.length||rows.length>256)throw Error();
+    const ids=new Set();
+    for(const row of rows){
+      if(!row||typeof row!=='object')continue;
+      const deviceId=row.id??row.dev_id,localKey=row.key??row.local_key;
+      if(typeof deviceId!=='string'||!/^[A-Za-z0-9_-]{6,64}$/.test(deviceId)||typeof localKey!=='string'||!/^[\x20-\x7e]{16}$/.test(localKey))continue;
+      if(ids.has(deviceId))throw Error();ids.add(deviceId);
+      const name=typeof row.name==='string'?row.name.replace(/[\x00-\x1f\x7f]/g,'').slice(0,64):'';
+      const ip=typeof row.ip==='string'&&/^(?:\d{1,3}\.){3}\d{1,3}$/.test(row.ip)&&row.ip.split('.').every(n=>Number(n)<=255)?row.ip:null;
+      const version=['3.1','3.3','3.4','3.5'].includes(String(row.version))?String(row.version):null;
+      lscImports.push({deviceId,localKey,name,ip,version});
+    }
+    if(!lscImports.length)throw Error();
+    $('lsc-import-device').append(Object.assign(document.createElement('option'),{value:'',textContent:'Choisissez votre éclairage…'}));
+    lscImports.forEach((row,index)=>$('lsc-import-device').append(Object.assign(document.createElement('option'),{value:String(index),textContent:(row.name||'Appareil')+' · '+row.deviceId})));
+    $('lsc-import-row').hidden=false;$('lsc-import-status').textContent=`${lscImports.length} identifiant(s) disponible(s). Sélectionnez uniquement une ampoule, un ruban ou un luminaire ; aucun appareil n’est ajouté automatiquement.`;
+  }catch{
+    if(generation!==lscSetupGeneration)return;
+    lscImports=[];$('lsc-import-device').replaceChildren();$('lsc-import-row').hidden=true;$('lsc-import-status').textContent='Fichier invalide ou sans clé locale utilisable. Format attendu : devices.json TinyTuya, 1 Mo et 256 appareils maximum, sans identifiant en double.';
+  }finally{if(generation===lscSetupGeneration)$('lsc-import-file').value='';}
+};
+$('lsc-import-device').onchange=()=>{
+  if(gatewayLocked()||pending||$('lsc-import-device').value==='')return;
+  const row=lscImports[Number($('lsc-import-device').value)];if(!row)return;
+  const same=$('new-device-id').value===row.deviceId;
+  if(!same)$('new-ip').value='';
+  $('new-device-id').value=row.deviceId;$('new-local-key').value=row.localKey;
+  if(row.ip)$('new-ip').value=row.ip;if(row.version)$('new-version').value=row.version;
+  if(!$('new-name').value&&row.name)$('new-name').value=row.name;
+  $('lsc-import-status').textContent='Identifiants renseignés. '+(!row.ip&&!same?'Renseignez ou détectez l’adresse IP. ':'')+(!row.version?'Vérifiez la version du protocole. ':'')+'Inspectez les DP avant de choisir un profil.';
+};
 $('gateway-add').onclick=()=>openDevice();$('close-device').onclick=()=>{$('device-dialog').close();clearCredentials();};
 $('device-dialog').addEventListener('close',clearCredentials);$('new-adapter').onchange=()=>{clearCredentials();adapterFields();};
 $('use-current-device').onclick=()=>{if(!state.device)return toast('Sélectionnez d’abord votre contrôleur dans Appareils.');$('new-address').value=state.device;if(!$('new-name').value)$('new-name').value=state.deviceName||'Mon éclairage';};

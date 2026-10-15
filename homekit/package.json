@@ -1,6 +1,6 @@
 {
   "name": "lantern-direct-homekit",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "private": true,
   "description": "Local HomeKit lighting bridge with Bluetooth, HTTP and Tuya LAN adapters",
   "main": "server.js",

@@ -51,11 +51,11 @@ public sealed partial class MainForm
         try
         {
         using var client=new HttpClient{Timeout=TimeSpan.FromSeconds(8)};
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("LanternDirect/0.8.1");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("LanternDirect/0.8.2");
         using var response=await client.GetAsync("https://api.github.com/repos/Imdraks/reverse-magic/releases?per_page=20");response.EnsureSuccessStatusCode();
         using var json=JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        var latest=json.RootElement.EnumerateArray().Where(x=>!x.GetProperty("draft").GetBoolean()).Select(x=>x.GetProperty("tag_name").GetString()??"").Select(x=>Version.TryParse(x.TrimStart('v'),out var version)?version:null).Where(x=>x!=null).OrderDescending().FirstOrDefault()??new Version(0,8,1);
-        return new {current="0.8.1",latest=latest.ToString(),available=latest>new Version(0,8,1)};
+        var latest=json.RootElement.EnumerateArray().Where(x=>!x.GetProperty("draft").GetBoolean()).Select(x=>x.GetProperty("tag_name").GetString()??"").Select(x=>Version.TryParse(x.TrimStart('v'),out var version)?version:null).Where(x=>x!=null).OrderDescending().FirstOrDefault()??new Version(0,8,2);
+        return new {current="0.8.2",latest=latest.ToString(),available=latest>new Version(0,8,2)};
         }
         catch(Exception error) when(error is HttpRequestException or TaskCanceledException)
         {throw new IOException("Impossible de vérifier les versions. Vos commandes locales restent disponibles ; réessayez avec Internet.");}

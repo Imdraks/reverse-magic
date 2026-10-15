@@ -1,14 +1,12 @@
-Cette mise à jour conserve le **dernier profil confirmé** et évite de changer la lumière à l’ouverture ou à l’arrêt du pont.
+Cette version simplifie l’ajout d’un éclairage LSC/Tuya **déjà associé au Wi-Fi** depuis l’interface Windows ou Linux.
 
-- **Arrêt passif** : quitter Lantern ou arrêter Maison ne commande ni extinction ni réinitialisation. Le premier contact Magic Lantern n’envoie plus de valeur par défaut et ne rejoue plus un ancien profil automatiquement.
-- **Mémoire locale par éclairage** : couleur/blanc, luminosité et état allumé/éteint pour LSC/Tuya et Shelly ; couleur ou animation, luminosité et vitesse dans le module manuel Magic Lantern.
-- **Écritures durables** : fichiers remplacés atomiquement et synchronisés sur disque ; une écriture déjà confirmée est mémorisée même si l’arrêt commence avant la fin de sa sauvegarde.
-- **Une reconnexion ne remplace pas le profil** par les réglages de démarrage du firmware. Une IP ou clé renouvelée ne supprime pas un profil dont les fonctions restent compatibles.
-- **Rétablir le profil** : rappel explicite depuis l’interface, Maison désactivé. Le verrou Maison est conservé. Le mode blanc/couleur LSC est respecté ; une scène propriétaire non restituable est signalée.
-- Les profils du pont graphique sont inclus dans ses sauvegardes chiffrées. Les profils et fichiers existants illisibles sont conservés, avec un avertissement.
+- **Rechercher sur le réseau** : écoute passive pendant huit secondes des annonces UDP Tuya (6666, 6667, 7000). Renseigne l’adresse, l’identifiant et la version annoncée après sélection. Aucun balayage des IP ni commande lumineuse.
+- **Importer mes identifiants locaux** : lecture d’un fichier TinyTuya `devices.json` dans la fenêtre pour éviter de recopier les clés. Sélection explicite de l’éclairage, aucune création automatique. Identifiants importés effacés de la fenêtre quand le formulaire est fermé ; le fichier d’origine reste sous votre responsabilité.
+- Les annonces reçues ne certifient ni la marque LSC ni la catégorie éclairage. La clé et les fonctions doivent être vérifiées par inspection des DP et test avant enregistrement.
+- Recherche, ajout et modifications restent verrouillés quand Maison est activé. Les profils mémorisés, appairages et comportements passifs au démarrage/à l’arrêt sont conservés.
 
-**Limite matérielle** : la mémoire de Lantern ne modifie pas le firmware des ampoules. Sans alimentation, leur conservation autonome de la couleur et leur éventuelle réinitialisation après des coupures rapides dépendent du modèle. Aucun DP de mémoire/reset n’est supposé, aucune séquence de coupures n’est réalisée. Si une réinitialisation efface le Wi-Fi ou la clé locale, rétablir la connexion avant de rappeler le profil. Un pont éteint ne peut pas restaurer une ampoule à distance.
+**Activation initiale non disponible** : cette version ne connecte pas une ampoule neuve au Wi-Fi, ne se connecte pas au compte LSC et ne récupère pas automatiquement ses clés. Un fichier TinyTuya doit déjà exister pour utiliser l’import. Le parcours officiel Tuya nécessite notamment un jeton lié au foyer ; les prérequis sont documentés dans `docs/research/lsc-smart-connect.md`. Aucune modification de firmware ni réinitialisation n’est effectuée.
 
-Tests avec véritables échanges HomeKit et un émulateur Tuya chiffré 3.5 : arrêt de tous les processus, changement du profil du firmware simulé, reprise sans commande automatique, puis restauration de couleur/blanc. Les appareils physiques et la référence Action 3208075 restent à vérifier sur matériel. Guide : `docs/DESKTOP.md`.
+Validation : vrais échanges UDP en clair, AES-ECB et AES-GCM, doublons, paquets invalides, erreurs réseau et résultats partiels, annulation, verrou Maison ; parcours Chromium avec import local et découverte UDP via le gestionnaire réel. Les ampoules physiques et la référence Action 3208075 restent à tester sur matériel. Voir `docs/LSC.md`.
 
-Téléchargements : `LanternDirect-Setup.exe` pour Windows ; ZIP portable complet ; paquets Linux x64 et Raspberry Pi ARM64. Arrêter les ponts et quitter Lantern avant de mettre à jour. Données et appairages existants conservés.
+Téléchargements : `LanternDirect-Setup.exe` pour Windows ; ZIP portable complet ; Linux x64 et Raspberry Pi ARM64. Arrêter les ponts et quitter Lantern avant la mise à jour. Données et appairages existants conservés.

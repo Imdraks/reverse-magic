@@ -45,3 +45,17 @@ Le chiffrement GCM de TuyAPI 7.7.1 propose par défaut un IV dérivé de l’heu
 Les tests TCP utilisent un émulateur indépendant construit avec `node:crypto`, sans le parseur de TuyAPI : CRC, AES, HMAC, AES-GCM et négociation de session sont exercés réellement pour les versions 3.1, 3.3, 3.4 et 3.5. Les fixtures ne sont jamais envoyées aux produits réels. Un vrai client HomeKit chiffré vérifie ensuite les caractéristiques exposées, les écritures de couleur/blanc et l’isolation des pannes.
 
 Ce travail vérifie le contrat de protocole et le pont, pas le firmware d’une référence commerciale. Restent à valider chez l’utilisateur : accès LAN du modèle, identifiant/clé locaux, version, schéma/plages de DP et rendu physique. La couverture de tous les éclairages LSC exige aussi les autres transports et les schémas qui seraient découverts lors des essais.
+
+## Installation entièrement depuis Lantern : prérequis vérifiés
+
+L’objectif est d’associer les éclairages LSC depuis Lantern, sans demander de recopier leurs clés locales. Cette fonction n’est pas implémentée. Le contrôle LAN existant ne réalise ni l’association Wi-Fi ni l’import du compte LSC.
+
+Les exemples publics officiels [Tuya Smart Life Android SDK](https://github.com/tuya/tuya-home-android-sdk-sample), consultés le 15 octobre 2026, distinguent ces étapes :
+
+- Dans [le mode EZ](https://github.com/tuya/tuya-home-android-sdk-sample/blob/main/bizsdk_sample/activator/src/main/java/com/tuya/appbizsdk/activator/ez/DeviceConfigEZActivity.kt) et [le mode AP](https://github.com/tuya/tuya-home-android-sdk-sample/blob/main/bizsdk_sample/activator/src/main/java/com/tuya/appbizsdk/activator/ap/DeviceConfigAPActivity.kt), l’app appelle `getActivatorToken(homeId, ...)`, puis transmet le jeton obtenu avec le SSID et le mot de passe à l’activateur. Envoyer uniquement les paramètres Wi-Fi n’est donc pas l’équivalent de ce parcours officiel.
+- Dans [le mode Bluetooth + Wi-Fi](https://github.com/tuya/tuya-home-android-sdk-sample/blob/main/bizsdk_sample/activator/src/main/java/com/tuya/appbizsdk/activator/dual/DeviceConfigDualActivity.kt), l’app découvre l’appareil par Bluetooth et transmet notamment le foyer via `relationId = homeId` à l’activateur. La découverte BLE ne démontre pas une activation autonome sans compte.
+- Le README officiel indique une vérification de la signature SHA-256 de l’application enregistrée sur la plateforme Tuya depuis le SDK 3.29.5. Le parcours SDK ne peut donc pas être considéré comme reproductible en changeant seulement le nom ou l’identifiant du paquet de Lantern. Ce constat porte sur le SDK officiel ; il ne prouve pas l’impossibilité d’un autre client de protocole.
+
+Ces exemples concernent le SDK Tuya, pas une validation expérimentale du service OEM LSC ni de la référence 3208075. Aucun accès au compte LSC, aucune émission de jeton et aucune activation physique n’ont été réalisés pendant cette étude. Les SDK mobiles ne constituent pas non plus une implémentation Windows/Linux réutilisable telle quelle.
+
+Avant d’implémenter un parcours présenté comme complet, il reste à vérifier sur une ampoule cible : le transport d’association réellement utilisé, l’obtention d’un jeton pour son compte/foyer, la confirmation d’activation, puis l’accès à la clé locale et au schéma produit. Un compte ou projet Tuya distinct ne doit pas être supposé compatible avec les comptes et produits OEM LSC. Les validations devront inclure redémarrage et reprise sans réassociation ni séquence de coupures électriques. L’ajout reste verrouillé quand Maison est actif.

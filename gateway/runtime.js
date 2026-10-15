@@ -29,7 +29,7 @@ class Gateway {
         .setCharacteristic(Characteristic.Manufacturer, 'Lantern Bridge')
         .setCharacteristic(Characteristic.Model, 'HomeKit Bridge')
         .setCharacteristic(Characteristic.SerialNumber, this.config.id)
-        .setCharacteristic(Characteristic.FirmwareRevision, '0.8.1');
+        .setCharacteristic(Characteristic.FirmwareRevision, '0.8.2');
       for (const device of this.config.devices) {
         const definition = adapters[device.adapter];
         const adapter = this.adapterFactory ? this.adapterFactory(device) : definition.create(device, {});

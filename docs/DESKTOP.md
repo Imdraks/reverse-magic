@@ -17,6 +17,10 @@ Quand Maison est arrêté, choisir une pièce puis **Tout allumer / Tout éteind
 
 Le statut correspond à la dernière connexion vérifiée pendant cette session. Le pont actualise la disponibilité périodiquement. Le journal et les dates de dernière connexion ne sont pas un historique persistant. Les pièces servent au classement dans Lantern ; les pièces Apple Maison se configurent dans Maison. Changer un nom ou une pièce conserve l’identifiant permanent de la lumière. Supprimer un éclairage peut exiger d’adapter ses automatismes Maison.
 
+## Ajout LSC guidé
+
+Dans l’assistant LSC, la recherche réseau passive peut remplir l’IP, l’identifiant et la version Tuya d’un éclairage déjà associé au Wi-Fi. L’import local d’un fichier TinyTuya `devices.json` peut remplir sa clé sans la recopier. Vérifier le profil par l’inspection des DP, tester puis enregistrer. L’ajout et la recherche restent verrouillés quand Maison fonctionne. L’activation d’une ampoule neuve et la récupération des clés depuis le compte LSC restent à réaliser. Voir [le parcours détaillé](LSC.md#retrouver-une-ampoule-depuis-lantern).
+
 ## Démarrer automatiquement
 
 Dans **Réglages**, activer **Démarrer Maison à l’ouverture de session**. Windows lance `LanternDirect.exe --desktop-homekit` ; fermer la fenêtre laisse le pont dans la zone de notification. Linux crée un raccourci d’autostart XDG qui lance `./lantern gui --homekit`. Cela nécessite une session graphique ; ce n’est pas un service de démarrage du Pi. Garder la machine allumée, sans veille, à portée des appareils Bluetooth.
