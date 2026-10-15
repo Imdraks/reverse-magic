@@ -24,13 +24,15 @@ jobs:
           import os, re, subprocess
           job=os.environ['JOB_ID']
           assert re.fullmatch(r'[0-9]+',job)
-          result=subprocess.run(['gh','api',f'repos/{os.environ["GH_REPO"]}/actions/jobs/{job}/logs'],capture_output=True,text=True)
+          result=subprocess.run(['gh','api','--allow-escape-sequences',f'repos/{os.environ["GH_REPO"]}/actions/jobs/{job}/logs'],capture_output=True,text=True)
           if result.returncode:
               error=re.sub(r'https?://[^\s]+','[URL withheld]',result.stderr)[-1500:]
               error=error.replace('%','%25').replace('\r','%0D').replace('\n','%0A')
               print('::warning title=Log retrieval failure::'+error)
               raise SystemExit('The job log could not be retrieved; redirect details withheld.')
           message='\n'.join(result.stdout.splitlines()[-90:])
+          message=re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',message)
+          message=re.sub(r'\b\d{3}-\d{2}-\d{3}\b','[redacted pairing code]',message)
           message=message.replace('%','%25').replace('\r','%0D').replace('\n','%0A')
           print('::warning title=CI test diagnostic::'+message)
           PY
