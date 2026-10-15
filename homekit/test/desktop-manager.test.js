@@ -77,3 +77,17 @@ test('desktop private RPC starts, persists settings, reports errors and exits at
     const next=await new DesktopManager(directory).init();assert.equal((await next.snapshot()).config.name,'Mon pont');await next.close();
   }finally{child.kill();lines.close();await fs.rm(directory,{recursive:true,force:true});}
 });
+
+test('quitting during bridge startup cancels an outstanding physical read and closes the child', {timeout:10000},async()=>{
+  const directory=await fs.mkdtemp(path.join(os.tmpdir(),'lantern-start-cancel-'));let reading;const requested=new Promise(resolve=>reading=resolve);
+  const relay=http.createServer(()=>reading());await new Promise(resolve=>relay.listen(0,'127.0.0.1',resolve));
+  const reservation=net.createServer();await new Promise(resolve=>reservation.listen(0,'127.0.0.1',resolve));const port=reservation.address().port;await new Promise(resolve=>reservation.close(resolve));
+  const manager=await new DesktopManager(directory).init();
+  try{
+    const project=await manager.load();project.config.port=port;await manager.save(project);
+    await manager.command('save-device',{name:'Waiting light',adapter:'shelly-gen1-relay',options:{host:`http://127.0.0.1:${relay.address().port}`,channel:0}});
+    const starting=manager.command('start'),rejected=assert.rejects(starting,/Impossible de démarrer/);
+    await requested;const before=Date.now();await manager.close();await rejected;assert.ok(Date.now()-before<2500,'shutdown should cancel the read rather than wait for its deadline');
+    assert.equal(await manager.external(await manager.load()),false);
+  }finally{await manager.close();await new Promise(resolve=>relay.close(resolve));await fs.rm(directory,{recursive:true,force:true});}
+});

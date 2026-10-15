@@ -182,6 +182,6 @@ class DesktopManager {
     }finally{await fs.rm(stage,{recursive:true,force:true});}
     this.health.clear();this.event('Configuration et identité Maison restaurées. Gardez l’ancien pont éteint.');return this.snapshot();
   }
-  async close(){this.closed=true;await Promise.allSettled([...this.activeAdapters].map(adapter=>adapter.close()));if(this.startup)await this.startup.catch(()=>{});if(this.running){await this.running.stop();this.running=null;}}
+  async close(){this.closed=true;const runtime=this.running;await Promise.allSettled([...this.activeAdapters].map(adapter=>adapter.close()));if(runtime)await runtime.stop();if(this.running===runtime)this.running=null;}
 }
 module.exports={DesktopManager,UserError,MAX};

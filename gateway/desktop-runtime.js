@@ -20,12 +20,18 @@ class DesktopRuntime {
 if(require.main===module){
   let gateway,startup,closing=false;
   const send=message=>{if(process.connected)process.send(message,()=>{});};
-  const stop=async()=>{if(closing)return;closing=true;try{await startup;if(gateway)await gateway.stop();}catch{}finally{if(process.connected)process.disconnect();process.stdin.destroy();}};
+  const stop=async()=>{if(closing)return;closing=true;try{
+    // Cancel initial reads/connections before waiting for startup. Otherwise many
+    // offline devices could keep a headless child alive after the desktop exits.
+    if(gateway){for(const entry of gateway.devices)entry.engine?.close();await Promise.allSettled(gateway.devices.map(entry=>entry.adapter.close()));}
+    await startup;if(gateway)await gateway.stop();
+  }catch{}finally{if(process.connected)process.disconnect();process.stdin.destroy();}};
   process.stdin.resume();process.stdin.once('end',()=>void stop());process.once('SIGINT',()=>void stop());process.once('SIGTERM',()=>void stop());
   process.once('message',message=>{
+    if(closing)return;
     startup=(async()=>{
-      gateway=new(require('./runtime').Gateway)(message.config,message.directory,{bind:message.bind,onStatus:devices=>send({kind:'status',devices})});
-      try{await gateway.start();send({kind:'ready'});}catch{send({kind:'error'});await gateway.stop();process.exitCode=1;}
+      gateway=new(require('./runtime').Gateway)(message.config,message.directory,{bind:message.bind,onStatus:devices=>send({kind:'status',devices}),adapterFactory:device=>closing?{read:async()=>{throw Error('Stopped');},status:async()=>({connected:false}),apply:async()=>{throw Error('Stopped');},close:async()=>{}}:require('./registry').adapters[device.adapter].create(device,{})});
+      try{await gateway.start();if(!closing)send({kind:'ready'});}catch{send({kind:'error'});await gateway.stop();process.exitCode=1;}
     })();
   });
 }
