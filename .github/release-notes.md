@@ -1,11 +1,15 @@
-Cette mise à jour ajoute la **reconnexion automatique au dernier contrôleur Bluetooth** dans l’interface Windows et Linux.
+Lantern Bridge dispose maintenant d’un **gestionnaire graphique multi-éclairages Windows et Linux / Raspberry Pi**.
 
-- Le dernier appareil connecté avec succès est retrouvé dès le lancement de l’application.
-- Après une indisponibilité ou une perte de liaison, de nouvelles tentatives sont effectuées automatiquement.
-- « Déconnecter » ou « Annuler » suspend les tentatives pour la session. Une connexion manuelle réussie les réactive ; l’appareil reste mémorisé pour le prochain lancement.
-- La reconnexion en mode manuel n’envoie aucune commande de couleur ou d’allumage.
-- Le pont multi-éclairages continue de reprendre tous les appareils de son fichier de configuration. Pour le démarrer avec le PC ou le Raspberry Pi, configurer le service ou la tâche de démarrage décrits dans `GUIDE-PONT.md`.
+- **Assistant d’ajout** pour Magic Lantern Bluetooth, éclairages LSC / Tuya LAN et relais Shelly Gen 1 utilisés pour la lumière. Noms, pièces, test de connexion et inspection DP LSC en lecture seule ; pas de récupération automatique des clés ou de balayage Wi-Fi.
+- **Tableau de bord par pièce** : disponibilité, dernière connexion de la session, commandes individuelles et de groupe, fonctions adaptées aux profils.
+- **Règle Maison conservée** : les commandes directes, ajouts, modifications, suppressions, diagnostics matériels et restaurations sont bloqués pendant le mode Maison, dans l’interface et côté programme. Pour ajouter une lampe : désactiver Maison, ajouter puis réactiver. Le même pont conserve son appairage.
+- **Réactivation fiable** : processus HomeKit neuf à chaque activation ; configuration et appairages relus depuis le stockage.
+- **Sauvegardes chiffrées** AES-256-GCM / scrypt : configuration, identifiants locaux et identité Maison ; restauration validée avec conservation de l’installation précédente. Phrase de passe de 12 caractères minimum.
+- **Démarrage automatique** du projet de l’interface à l’ouverture de session Windows/Linux. Export d’un service utilisateur pour un Pi sans écran ; installation et maintien du service au boot décrits dans `docs/DESKTOP.md`.
+- Journal de session et parcours de mise à jour guidé. L’installateur conserve les données utilisateur et le choix du pont à démarrer.
 
-**Téléchargement** : `LanternDirect-Setup.exe` pour Windows ; `LanternDirect-Windows-HomeKit.zip` pour le paquet portable complet ; `LanternDirect-Linux-arm64.tar.gz` pour Raspberry Pi OS 64 bits ; `LanternDirect-Linux-x64.tar.gz` pour PC Linux. Quitter Lantern et arrêter son pont avant la mise à jour. Les données utilisateur et les appairages Maison existants sont conservés.
+**Télécharger** `LanternDirect-Setup.exe` sous Windows, ou le ZIP portable complet ; `LanternDirect-Linux-arm64.tar.gz` pour Raspberry Pi OS 64 bits, `LanternDirect-Linux-x64.tar.gz` pour PC Linux. Quitter Lantern et arrêter ses services avant la mise à jour. Guide : `docs/DESKTOP.md` dans les paquets.
 
-Le projet reste limité à l’éclairage : Magic Lantern, relais Shelly utilisés pour la lumière et éclairages LSC/Tuya LAN configurés. LSC nécessite l’IP, l’identifiant, la clé locale, la version et un profil DP adapté. Les transports LSC BLE/Mesh/Zigbee et les produits cloud seul ne sont pas intégrés. La compatibilité de tous les éclairages LSC reste un objectif ; la référence Action 3208075 et les appareils physiques restent à vérifier sur matériel.
+Le module Magic Lantern et son ancien pont individuel restent disponibles avec leurs données. Le nouveau gestionnaire a une identité et un stockage distincts : il n’importe pas automatiquement un `bridge.json` du terminal ni l’appairage individuel d’une LED. Les pièces Lantern ne synchronisent pas les pièces Apple Maison. Le journal est limité à la session. Les clés locales sont stockées dans le profil utilisateur ; elles sont chiffrées dans les sauvegardes exportées.
+
+Le projet reste consacré à l’éclairage. LSC nécessite une IP, une version Tuya, un profil DP et des identifiants valides ; BLE/Mesh/Zigbee et produits cloud seul ne sont pas intégrés au driver LAN. La référence Action 3208075 et les appareils physiques restent à valider sur matériel. Les tests utilisent de vrais échanges HomeKit, des appareils HTTP/Tuya simulés et le parcours graphique complet ; ils ne certifient pas toute une gamme commerciale.

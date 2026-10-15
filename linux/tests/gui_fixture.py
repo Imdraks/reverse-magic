@@ -19,7 +19,7 @@ class FakeController:
 
 class Fixture(Desktop):
     async def command(self,action,data):
-        if action=='scan':
+        if action=='scan' and not self.gateway_active() and not self.snapshot()['bridge']:
             self.devices=[dict(name='Lumière du salon',address='AA:BB:CC:DD:EE:FF',rssi=-48)]
             return {'state':self.snapshot()}
         if action=='test-frames':return self.controller.frames if self.controller else []
@@ -28,6 +28,7 @@ class Fixture(Desktop):
 async def main():
     with tempfile.TemporaryDirectory() as directory:
         app=Fixture(SimpleNamespace(device=None,adapter=None,data_dir=Path(directory)),FakeController)
+        await app.gateway_command('state',{})
         server=LocalServer(app,asyncio.get_running_loop())
         thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         print(json.dumps(dict(origin=server.origin,token=server.token)),flush=True)

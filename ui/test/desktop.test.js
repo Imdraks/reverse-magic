@@ -95,3 +95,40 @@ test('desktop UI: authenticated API, devices, GRB colour, Maison pairing and ada
     assert.equal(errors,'');
   }
 });
+
+test('desktop installation: add and edit a real HTTP light, Home locks API and UI, encrypted backup restores the same identity', {timeout:90000},async()=>{
+  const http=require('node:http');let relayOn=false;const writes=[];
+  const relay=http.createServer((request,response)=>{const url=new URL(request.url,'http://localhost');if(url.searchParams.has('turn')){relayOn=url.searchParams.get('turn')==='on';writes.push(relayOn);}response.end(JSON.stringify({ison:relayOn}));});
+  await new Promise(resolve=>relay.listen(0,'127.0.0.1',resolve));
+  const child=spawn(process.env.LANTERN_TEST_PYTHON||path.join(root,'.venv/bin/python'),['-u',path.join(root,'linux/tests/gui_fixture.py')],{cwd:root,stdio:['ignore','pipe','pipe']});const exit=once(child,'exit');let errors='';child.stderr.on('data',data=>errors+=data);const lines=readline.createInterface({input:child.stdout});let browser;
+  try{
+    const [line]=await once(lines,'line');const {origin,token}=JSON.parse(line);
+    const api=async(action,data={})=>{const response=await fetch(origin+'/api/'+action,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(data)});return {status:response.status,...await response.json()};};
+    browser=await chromium.launch({executablePath:process.env.LANTERN_CHROMIUM||'/usr/bin/chromium',headless:true,args:['--no-sandbox']});const page=await browser.newPage({viewport:{width:1320,height:1020},acceptDownloads:true});const pageErrors=[];page.on('pageerror',error=>pageErrors.push(error.message));
+    await page.goto(origin+'/#key='+token);await page.waitForFunction(()=>!document.getElementById('gateway-add').disabled);
+    await page.locator('#gateway-add').click();await page.locator('#new-name').fill('Lampe lecture');await page.locator('#new-room').fill('Salon');await page.locator('#new-adapter').selectOption('shelly-gen1-relay');await page.locator('#new-host').fill(`http://127.0.0.1:${relay.address().port}`);
+    await page.locator('#new-test').click();await page.waitForFunction(()=>document.getElementById('new-test-result').textContent.includes('lecture réussies'));assert.deepEqual(writes,[],'assistant connection test must be read-only');
+    await page.locator('#new-save').click();await page.locator('#device-dialog').waitFor({state:'hidden'});await page.getByRole('heading',{name:'Lampe lecture',exact:true}).waitFor();
+    const initial=(await api('gateway-state')).result.gatewayResult,id=initial.devices[0].id;
+    await page.locator('#gateway-toggle').click();await page.waitForFunction(()=>document.getElementById('gateway-toggle').textContent==='Désactiver Maison'&&!document.getElementById('gateway-toggle').disabled);
+    for(const selector of ['#gateway-add','#group-on','#gateway-refresh'])assert.equal(await page.locator(selector).isDisabled(),true);
+    assert.equal(await page.getByRole('button',{name:'Modifier',exact:true}).isDisabled(),true);
+    for(const [action,data] of [['gateway-save-device',{name:'Interdit'}],['gateway-apply-group',{on:true}],['gateway-backup',{password:'a long enough phrase'}],['power',{on:true}],['scan',{all:false}]]){const reply=await api(action,data);assert.equal(reply.ok,false);assert.match(reply.error,/Maison est actif/);}
+    assert.deepEqual(writes,[]);
+    await page.locator('#gateway-pairing').click();await page.locator('#pairing-dialog[open]').waitFor();const pairing=await page.locator('#pairing-code').textContent();await page.locator('#close-pairing').click();
+    await page.locator('#gateway-toggle').click();await page.waitForFunction(()=>!document.getElementById('gateway-add').disabled);
+    await page.getByRole('button',{name:'Modifier',exact:true}).click();await page.locator('#new-room').fill('Bureau');await page.locator('#new-name').fill('Liseuse');await page.locator('#new-save').click();await page.locator('#device-dialog').waitFor({state:'hidden'});await page.getByRole('heading',{name:'Liseuse',exact:true}).waitFor();
+    assert.equal((await api('gateway-state')).result.gatewayResult.devices[0].id,id);
+    await page.locator('#room-filter').selectOption('Bureau');await page.locator('#group-on').click();await page.waitForFunction(()=>!document.getElementById('group-on').disabled);assert.deepEqual(writes,[true]);
+    await page.getByRole('button',{name:'Réglages',exact:true}).click();await page.locator('#gateway-backup').click();await page.locator('#backup-password').fill('a long backup passphrase');const downloaded=page.waitForEvent('download');await page.locator('#backup-submit').click();const download=await downloaded;const savedFile=await download.path();assert.equal(JSON.parse(await fs.readFile(savedFile,'utf8')).format,'lantern-backup-1');await page.locator('#backup-dialog').waitFor({state:'hidden'});
+    await page.getByRole('button',{name:'Le pont',exact:true}).click();page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Retirer',exact:true}).click();await page.waitForFunction(()=>document.getElementById('gateway-devices').textContent.includes('Une première lumière'));
+    await page.getByRole('button',{name:'Réglages',exact:true}).click();await page.locator('#gateway-restore').click();await page.locator('#restore-file').setInputFiles(savedFile);await page.locator('#backup-password').fill('a long backup passphrase');page.once('dialog',dialog=>dialog.accept());await page.locator('#backup-submit').click();await page.locator('#backup-dialog').waitFor({state:'hidden'});
+    await page.getByRole('button',{name:'Le pont',exact:true}).click();await page.getByRole('heading',{name:'Liseuse',exact:true}).waitFor();assert.equal((await api('gateway-state')).result.gatewayResult.devices[0].id,id);
+    await page.locator('#gateway-toggle').click();await page.waitForFunction(()=>!document.getElementById('gateway-pairing').disabled);await page.locator('#gateway-pairing').click();await page.locator('#pairing-dialog[open]').waitFor();assert.equal(await page.locator('#pairing-code').textContent(),pairing);await page.locator('#close-pairing').click();await page.locator('#gateway-toggle').click();await page.waitForFunction(()=>!document.getElementById('gateway-add').disabled);
+    await page.locator('#toast').evaluate(el=>el.hidden=true);await page.mouse.move(1300,10);
+    await page.screenshot({path:path.join(root,'../outputs/interface/bridge-light.png'),fullPage:true,animations:'disabled'});
+    await page.locator('#theme').click();await page.screenshot({path:path.join(root,'../outputs/interface/bridge-dark.png'),fullPage:true,animations:'disabled'});
+    await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
+    assert.deepEqual(pageErrors,[]);
+  }finally{if(browser)await browser.close();lines.close();child.kill('SIGTERM');await exit;await new Promise(resolve=>relay.close(resolve));assert.equal(errors,'');}
+});

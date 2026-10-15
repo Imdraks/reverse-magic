@@ -48,6 +48,8 @@ class Desktop:
         self.mode,self.effect,self.scene,self.speed,self.known='color',0,False,50,False
         self.favorites=Favorites(self.base/'favorites.json')
         self.connection_issue=None;self.connect_task=None;self.attempt=0
+        self.gateway_host = None
+        self.gateway_starting = False
         self.auto_task = None
         self.closing = False
         self.auto_paused = False
@@ -63,7 +65,7 @@ class Desktop:
     async def reconnect_loop(self, interval):
         while True:
             async with self.commands:
-                if (not self.auto_paused and self.remembered
+                if (not self.auto_paused and self.remembered and not self.gateway_active()
                         and not (self.bridge_task and not self.bridge_task.done())
                         and not (self.controller and self.controller.connected)):
                     try:
@@ -72,11 +74,27 @@ class Desktop:
                         if self.closing: return
             await asyncio.sleep(interval)
 
+    def gateway_active(self):
+        return self.gateway_starting or bool(self.gateway_host and self.gateway_host.state.get('active'))
+
+    async def gateway_command(self,action,data):
+        if self.snapshot()['bridge']:raise ValueError('Arrêtez le pont Magic Lantern avant de gérer les autres éclairages.')
+        if self.gateway_host is None:
+            from gateway_host import GatewayHost
+            from lantern import node_path
+            self.gateway_host=GatewayHost(node_path(),ROOT/'gateway/desktop-worker.js',self.base/'desktop-bridge')
+        if action in ('start','test-device','refresh-devices','apply','apply-group'):
+            self.gateway_starting=action=='start';self.auto_paused=True
+            await self.disconnect()
+        try:return await self.gateway_host.command(action,data)
+        finally:self.gateway_starting=False
+
     def snapshot(self):
         favorites,error=self.favorites.snapshot()
         if self.controller and not self.controller.connected and not self.connect_task and not self.bridge_task and self.connection_issue is None:
             self.connection_issue=issue(ConnectionError('Connexion perdue.'));self.status='Connexion interrompue.'
-        return dict(version='0.7.1',favorites=favorites,favoritesError=error,canSaveFavorite=self.known and not self.mic and not error,connectionIssue=self.connection_issue,connecting=self.connect_task is not None,connectionAttempt=self.attempt,platform='linux',connected=bool(self.controller and self.controller.connected),device=self.device,deviceName=self.device_name,
+        from desktop_tools import autostart_enabled
+        return dict(autostart=autostart_enabled(),gateway=self.gateway_host.state if self.gateway_host else {'available':False,'active':False},version='0.8.0',favorites=favorites,favoritesError=error,canSaveFavorite=self.known and not self.mic and not error,connectionIssue=self.connection_issue,connecting=self.connect_task is not None,connectionAttempt=self.attempt,platform='linux',connected=bool(self.controller and self.controller.connected),device=self.device,deviceName=self.device_name,
                     on=self.on,brightness=self.brightness,rgb=self.rgb,mic=self.mic,bridge=self.bridge_task is not None and not self.bridge_task.done(),
                     pairingReady=self.pairing_ready,devices=self.devices,effects=self.effects,status=self.status)
 
@@ -154,7 +172,16 @@ class Desktop:
             return {}
         if action=='quit': asyncio.get_running_loop().call_later(.3,self.stop.set);return {}
         async with self.commands:
-            if self.snapshot()['bridge'] and action not in ('bridge-stop','pairing','favorite-delete','diagnose','check-updates','open-downloads'):
+            if action=='gateway-autostart':
+                from desktop_tools import set_autostart
+                set_autostart(ROOT,bool(data.get('enabled')))
+                return {'state':self.snapshot()}
+            if action.startswith('gateway-'):
+                result=await self.gateway_command(action[8:],data)
+                return {'gatewayResult':result,'state':self.snapshot()}
+            if self.gateway_active() and action not in ('diagnose','check-updates','open-downloads'):
+                raise ValueError('Maison est actif. Désactivez le pont avant les commandes directes et les modifications.')
+            if self.snapshot()['bridge'] and action not in ('bridge-stop','pairing','diagnose','check-updates','open-downloads'):
                 raise ValueError('Maison pilote vos LED. Arrêtez le pont pour utiliser les commandes directes.')
             if action=='scan':
                 from bleak import BleakScanner
@@ -240,6 +267,7 @@ class Desktop:
             self.auto_task=None
         if self.connect_task and self.connect_task is not asyncio.current_task():
             self.connect_task.cancel();await asyncio.gather(self.connect_task,return_exceptions=True)
+        if self.gateway_host:await self.gateway_host.close()
         await self.stop_bridge();await self.disconnect()
 
 class LocalServer(ThreadingHTTPServer):
@@ -261,7 +289,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if not self.host_ok():self.respond(403,b'{}');return
         name=urlsplit(self.path).path
-        files={'/':('index.html','text/html; charset=utf-8'),'/index.html':('index.html','text/html; charset=utf-8'),'/style.css':('style.css','text/css'),'/app.js':('app.js','text/javascript'),'/icon.svg':('icon.svg','image/svg+xml')}
+        files={'/':('index.html','text/html; charset=utf-8'),'/index.html':('index.html','text/html; charset=utf-8'),'/style.css':('style.css','text/css'),'/app.js':('app.js','text/javascript'),'/gateway.js':('gateway.js','text/javascript'),'/icon.svg':('icon.svg','image/svg+xml')}
         if name not in files:self.respond(404,b'{}');return
         name,kind=files[name];self.respond(200,(ROOT/'ui'/name).read_bytes(),kind)
     def do_POST(self):
@@ -271,17 +299,21 @@ class Handler(BaseHTTPRequestHandler):
         if not path.startswith('/api/') or not path[5:] or self.headers.get('Content-Type')!='application/json':self.respond(400,b'{"ok":false}');return
         try:
             length=int(self.headers.get('Content-Length','0'))
-            if not 0<length<=8192: raise ValueError('Requête invalide.')
+            if not 0<length<=3*1024*1024: raise ValueError('Requête invalide.')
             data=json.loads(self.rfile.read(length))
             if not isinstance(data,dict): raise ValueError('Requête invalide.')
             future=asyncio.run_coroutine_threadsafe(self.server.desktop.command(path[5:],data),self.server.loop)
-            try:result=future.result(timeout=60 if path[5:]=='connect' else 36)
+            try:result=future.result(timeout=185 if path[5:].startswith('gateway-') else 60 if path[5:]=='connect' else 36)
             except TimeoutError:future.cancel();raise ValueError('Le contrôleur ne répond pas. Réessayez après reconnexion.')
             self.respond(200,json.dumps({'ok':True,'result':result}).encode())
         except Exception as error:self.respond(400,json.dumps({'ok':False,'error':str(error)}).encode())
 
 async def run_gui(args):
     desktop=Desktop(args)
+    try:
+        await desktop.gateway_command('state',{})
+        if getattr(args,'homekit',False):await desktop.gateway_command('start',{})
+    except Exception as error:desktop.status=str(error)
     desktop.start_reconnect()
     loop=asyncio.get_running_loop()
     server=LocalServer(desktop,loop)

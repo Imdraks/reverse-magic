@@ -1,3 +1,16 @@
+LANTERN BRIDGE — PONT MULTI-ÉCLAIRAGES
+
+Installer LanternDirect-Setup.exe ou extraire le ZIP complet, puis ouvrir LanternDirect.exe.
+Dans « Le pont », ajouter un éclairage, tester puis enregistrer. Activer Maison et afficher son code.
+Pour tout ajout ensuite : désactiver Maison, ajouter l’appareil, puis réactiver.
+Les commandes directes restent bloquées lorsque Maison est actif.
+Réglages : démarrage avec Windows, sauvegarde chiffrée, restauration et journal de session.
+Guide complet : docs/DESKTOP.md. Le pont multi-éclairages utilise le port 51828.
+Les identifiants et appairages sont conservés dans le profil utilisateur.
+
+Le module Magic Lantern et son ancien pont sont conservés. Leur guide historique suit.
+Ne pas utiliser deux ponts sur les mêmes LED.
+
 LANTERN DIRECT — MAISON SUR IPHONE AVEC UN PONT WINDOWS
 
 Windows 10 2004 ou plus récent / Windows 11 x64, Bluetooth LE.

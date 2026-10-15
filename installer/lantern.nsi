@@ -2,16 +2,18 @@ Unicode true
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
 !include "FileFunc.nsh"
+!include "StrFunc.nsh"
+${StrStr}
 !include "x64.nsh"
 Name "Lantern Bridge"
 OutFile "${OUTPUT_FILE}"
 InstallDir "$LOCALAPPDATA\Programs\LanternDirect"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
-VIProductVersion "0.7.1.0"
+VIProductVersion "0.8.0.0"
 VIAddVersionKey /LANG=1036 "ProductName" "Lantern Bridge"
 VIAddVersionKey /LANG=1036 "FileDescription" "Installation de Lantern Bridge pour Windows x64"
-VIAddVersionKey /LANG=1036 "FileVersion" "0.7.1"
+VIAddVersionKey /LANG=1036 "FileVersion" "0.8.0"
 VIAddVersionKey /LANG=1036 "LegalCopyright" "Lantern Bridge"
 !define MUI_ABORTWARNING
 !define MUI_FINISHPAGE_RUN "$INSTDIR\LanternDirect.exe"
@@ -71,7 +73,7 @@ Section "Lantern Bridge et pont Maison" Main
   CreateShortcut "$SMPROGRAMS\Lantern Bridge\Lantern Bridge.lnk" "$INSTDIR\LanternDirect.exe"
   CreateShortcut "$SMPROGRAMS\Lantern Bridge\Désinstaller.lnk" "$INSTDIR\Uninstall.exe"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LanternDirect" "DisplayName" "Lantern Bridge"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LanternDirect" "DisplayVersion" "0.7.1"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LanternDirect" "DisplayVersion" "0.8.0"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LanternDirect" "Publisher" "Lantern Bridge"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LanternDirect" "UninstallString" '"$INSTDIR\Uninstall.exe"'
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LanternDirect" "InstallLocation" "$INSTDIR"
@@ -83,7 +85,12 @@ Section "Lantern Bridge et pont Maison" Main
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LanternDirect" "EstimatedSize" $0
   ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "LanternDirectHomeKit"
   ${If} $0 != ""
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "LanternDirectHomeKit" '"$INSTDIR\LanternDirect.exe" --homekit'
+    ${StrStr} $1 $0 "--desktop-homekit"
+    ${If} $1 != ""
+      WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "LanternDirectHomeKit" '"$INSTDIR\LanternDirect.exe" --desktop-homekit'
+    ${Else}
+      WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "LanternDirectHomeKit" '"$INSTDIR\LanternDirect.exe" --homekit'
+    ${EndIf}
   ${EndIf}
 SectionEnd
 Section "Raccourci sur le Bureau" Desktop

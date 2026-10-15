@@ -16,6 +16,6 @@ internal static class Program
         using var instance = new Mutex(true, "LanternDirect.CurrentUser." + Environment.UserName, out var first);
         if (!first) { MessageBox.Show("Lantern Bridge est déjà ouvert. Retrouvez son icône près de l’horloge."); return; }
         ApplicationConfiguration.Initialize();
-        Application.Run(new MainForm(args.Contains("--homekit")));
+        Application.Run(new MainForm(args.Contains("--homekit"), args.Contains("--desktop-homekit")));
     }
 }

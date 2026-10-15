@@ -22,7 +22,7 @@ flowchart LR
 | `homekit/` | Moteur de lampe, stockage/identité, services HAP, canal privé ; point d’entrée historique `server.js` préservé pour migration |
 | `windows/` | Shell natif et module radio Windows ; `--adapter-worker` travaille sans fenêtre par stdio |
 | `linux/` | Shell Python, BlueZ, service ; `adapter_worker.py` est le worker du nouveau pont |
-| `ui/` | GUI partagé ; module Magic Lantern et présentation du nouveau pont |
+| `ui/` | GUI partagé ; assistant, pièces, commandes verrouillées par Maison, sauvegardes et module Magic Lantern |
 | `docs/protocols/` | Protocoles matériels documentés et provenance des trames |
 | `installer/`, `scripts/` | Installation et paquets reproductibles Windows/x64/ARM64 |
 
@@ -41,3 +41,11 @@ Le moteur de lampe regroupe les changements HomeKit et restaure la dernière con
 5. Vérifier physiquement le produit et documenter la compatibilité. Un adaptateur passé en tests simulés ne constitue pas une validation de tous les modèles d’une marque.
 
 La configuration n’exécute pas de scripts ou de modules arbitraires. Les futurs plugins devront avoir une installation et un contrat explicites. Les futurs modules restent consacrés à l’éclairage. Un autre transport (BLE, Zigbee, cloud) exige son intégration propre ; aucun support de capteurs, volets, thermostats ou caméras n’est prévu dans ce périmètre.
+
+## Gestionnaire graphique
+
+`desktop-manager.js` gère un projet local distinct du CLI : configuration validée, pièces, identifiants privés et stockage du pont. Les hôtes Python/C# communiquent avec `desktop-worker.js` par pipes JSON privés, sans écoute réseau supplémentaire. Les opérations sont sérialisées et les modifications vérifient aussi le verrou du runtime pour détecter un service externe. Les commandes de groupe sont bornées en concurrence et durée.
+
+Chaque activation utilise un processus `desktop-runtime.js` neuf : HAPStorage est global à un processus et ne peut pas être réinitialisé après un arrêt ou une restauration. L’identité est relue sur disque ; elle reste stable. La fermeture du pipe entraîne l’arrêt du runtime et des adaptateurs. L’interface et les hôtes bloquent aussi les commandes du module BLE historique lorsque ce pont est actif.
+
+Les sauvegardes AES-256-GCM/scrypt contiennent configuration, identifiants et appairages. La restauration authentifie le fichier, valide chemins et schéma puis remplace un dossier préparé en conservant l’installation précédente. Le format est indépendant de l’interface et les clés ne passent pas dans les snapshots de statut. Le [guide](DESKTOP.md) précise le stockage, les limites et la migration.

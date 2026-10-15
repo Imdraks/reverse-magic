@@ -8,7 +8,7 @@ public sealed partial class MainForm
         var timer = new System.Windows.Forms.Timer { Interval = 10000 };
         async Task Reconnect()
         {
-            if (IsDisposed || autoReconnectPaused || lastDevice == null || ble.IsReady ||
+            if (IsDisposed || GatewayActive || autoReconnectPaused || lastDevice == null || ble.IsReady ||
                 homeKit != null || busy || reconnecting || desktopConnectCancel != null) return;
             // Share the command gate with WebView commands; never race a manual selection.
             if (!await desktopCommands.WaitAsync(0)) return;

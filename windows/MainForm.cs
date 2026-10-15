@@ -28,7 +28,7 @@ public sealed partial class MainForm : Form
     private bool controllerMic;
     private bool busy;
 
-    public MainForm(bool homekitAtStartup = false)
+    public MainForm(bool homekitAtStartup = false, bool gatewayAtStartup = false)
     {
         Text = "Lantern Bridge — LED Bluetooth";
         Width = 610; Height = 840;
@@ -140,7 +140,8 @@ public sealed partial class MainForm : Form
         scanTimer.Tick += (_, _) => { StopScan(); status.Text = found.Count == 0 ? "Aucune LED trouvée. Rapprochez-vous et fermez l’app Android." : "Choisissez votre contrôleur."; };
         FormClosed += (_, _) => { StopHomeKit(); scanTimer.Dispose(); ble.Dispose(); };
         InitializeDesktop(page);
-        InitializeReconnect(homekitAtStartup);
+        InitializeReconnect(homekitAtStartup || gatewayAtStartup);
+        InitializeGateway(gatewayAtStartup);
     }
 
     private async Task Connect(FoundLED selected, CancellationToken cancellationToken = default)
@@ -171,6 +172,7 @@ public sealed partial class MainForm : Form
         button.Click += async (_, _) =>
         {
             if (busy) return;
+            if (GatewayActive) { status.Text = "Désactivez le pont multi-éclairages dans l’interface avant les commandes directes."; return; }
             busy = true; connectionPanel.Enabled = false; controls.Enabled = false; UseWaitCursor = true;
             try { await action(); }
             catch (Exception e)

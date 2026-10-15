@@ -2,7 +2,11 @@
 
 Client natif Windows du protocole BLE Magic Lantern 6.11.10. Version Windows x64, **Windows 10 version 2004 ou ultérieure / Windows 11**, avec adaptateur Bluetooth LE fonctionnel. Exécutable autonome .NET 10 ; aucun runtime .NET séparé n’est nécessaire. Le pont Maison sert HomeKit sur votre réseau local, sans compte ni cloud.
 
-## Utiliser
+## Pont graphique multi-éclairages
+
+Ouvrir **Le pont → Ajouter un éclairage**. Les pièces, commandes de groupe, diagnostics et sauvegardes chiffrées sont décrits dans [le guide](../docs/DESKTOP.md). Maison actif verrouille les commandes directes et les modifications. Le module et le pont individuels historiques sont conservés.
+
+## Utiliser le module Magic Lantern
 
 1. Ouvrir `LanternDirect.exe` sur le PC Windows.
 2. Alimenter les LED, activer le Bluetooth et fermer l’app Android pour libérer la connexion.

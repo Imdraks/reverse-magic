@@ -37,6 +37,8 @@ Arrêter le pont Windows si vous le remplacez par le Pi. Fermer Magic Lantern et
 
 ## Interface graphique
 
+Le pont multi-éclairages, son assistant, ses pièces et ses sauvegardes sont décrits dans [le guide](../docs/DESKTOP.md). Désactiver Maison avant de modifier les appareils.
+
 Sur un Linux ou Raspberry Pi avec un bureau et un navigateur récent :
 
 ```bash

@@ -19,7 +19,7 @@ if(!webview){
   if(token){sessionStorage.setItem('lantern-session',token);history.replaceState(null,'',location.pathname);}
 }
 async function rpc(action,data={}){
-  const timeout=action==='connect'?65000:40000;
+  const timeout=action.startsWith('gateway-')?190000:action==='connect'?65000:40000;
   if(webview)return new Promise((resolve,reject)=>{
     const id=++sequence;
     const timer=setTimeout(()=>{requests.delete(id);reject(new Error('Le contrôleur ne répond pas. Réessayez après reconnexion.'));},timeout);
@@ -29,7 +29,7 @@ async function rpc(action,data={}){
   const result=await response.json();if(!response.ok||!result.ok)throw new Error(result.error||'Opération impossible.');return result.result;
 }
 let state={connected:false,bridge:false,on:false,brightness:100,rgb:'FFB340',mic:false,devices:[],effects:[],platform:'linux'},pending=false,busyAction='',toastTimer,activePage='gateway',effectSignature='';
-const titles={gateway:['Le pont','Vos lumières, réunies.','Un pont local pour vos éclairages et Maison.'],overview:['Vue d’ensemble','La lumière, simplement.','Un peu de couleur. Une autre atmosphère.'],ambience:['Ambiances','À chaque instant, sa couleur.','Choisissez une teinte. Laissez le reste s’effacer.'],home:['Maison','Tout naturellement, ensemble.','Votre lumière trouve sa place dans Maison.'],devices:['Appareils','Le début d’une belle connexion.','Retrouvez vos LED et rapprochez les choses.']};
+const titles={settings:['Réglages','Votre maison, durablement.','Le pont, ses sauvegardes et son fonctionnement.'],gateway:['Le pont','Vos lumières, réunies.','Un pont local pour vos éclairages et Maison.'],overview:['Vue d’ensemble','La lumière, simplement.','Un peu de couleur. Une autre atmosphère.'],ambience:['Ambiances','À chaque instant, sa couleur.','Choisissez une teinte. Laissez le reste s’effacer.'],home:['Maison','Tout naturellement, ensemble.','Votre lumière trouve sa place dans Maison.'],devices:['Appareils','Le début d’une belle connexion.','Retrouvez vos LED et rapprochez les choses.']};
 function openPage(page){
   activePage=page;document.querySelectorAll('.page').forEach(el=>el.classList.toggle('active',el.id==='page-'+page));
   document.querySelectorAll('.nav-item').forEach(el=>{el.classList.toggle('active',el.dataset.page===page);el.setAttribute('aria-current',el.dataset.page===page?'page':'false');});
@@ -37,7 +37,7 @@ function openPage(page){
 }
 document.querySelectorAll('[data-page]').forEach(el=>el.onclick=()=>openPage(el.dataset.page));
 document.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openPage(el.dataset.open));
-$('connection-pill').onclick=()=>openPage('devices');
+$('connection-pill').onclick=()=>openPage(activePage==='gateway'||activePage==='settings'?'gateway':'devices');
 function toast(message){clearTimeout(toastTimer);$('toast').textContent=message;$('toast').hidden=false;toastTimer=setTimeout(()=>$('toast').hidden=true,5500);}
 async function act(action,data={},success){
   if(pending)return;pending=true;busyAction=action;document.body.classList.add('pending');render(state);
@@ -48,9 +48,11 @@ async function act(action,data={},success){
 function range(id,value){const el=$(id);if(!el.matches(':active')&&!pending)el.value=value;el.style.setProperty('--fill',el.value+'%');}
 function render(next){
   state={...state,...next};
+  const locked=state.bridge||Boolean(state.gateway?.active);
+  if(typeof renderGateway==='function')renderGateway();
   $('gateway-command').textContent=state.platform==='windows'?'node.exe gateway/cli.js init --config bridge.json':'./lantern gateway init --config bridge.json';
-  $('connection-text').textContent=state.connected?(state.deviceName||'LED connectées'):'Non connecté';
-  $('connection-pill').classList.toggle('online',state.connected);
+  $('connection-text').textContent=(activePage==='gateway'||activePage==='settings')&&state.gateway?.active?'Maison actif':state.connected?(state.deviceName||'LED connectées'):'Non connecté';
+  $('connection-pill').classList.toggle('online',state.connected||Boolean(state.gateway?.active));
   $('light-name').textContent=state.deviceName||'Lumière principale';
   $('light-description').textContent=state.connected?'Votre espace, sous une autre lumière.':'Connectez votre ruban et composez votre ambiance.';
   $('power').setAttribute('aria-checked',String(state.on));$('power').setAttribute('aria-label',state.on?'Éteindre la lumière':'Allumer la lumière');
@@ -59,27 +61,27 @@ function render(next){
   document.querySelector('.hero').classList.toggle('lit',state.on&&state.connected);
   document.documentElement.style.setProperty('--lamp-color','#'+state.rgb);
   range('brightness',state.brightness);$('brightness-value').replaceChildren(document.createTextNode(String(state.brightness)),Object.assign(document.createElement('span'),{textContent:'%'}));
-  document.querySelectorAll('.manual').forEach(el=>el.disabled=!state.connected||state.bridge||pending);
+  document.querySelectorAll('.manual').forEach(el=>el.disabled=!state.connected||locked||pending);
   document.querySelectorAll('.swatch').forEach(el=>el.classList.toggle('selected',el.dataset.rgb===state.rgb));
   if(document.activeElement!==$('custom-color'))$('custom-color').value='#'+state.rgb;
   const swatch=swatches.find(item=>item[0]===state.rgb);$('color-caption').textContent=swatch?swatch[1]:'Votre couleur personnelle';
-  $('mode-notice').hidden=!state.bridge;$('home-dot').classList.toggle('on',state.bridge);
+  $('mode-notice').hidden=!locked;$('home-dot').classList.toggle('on',locked);
   $('home-status').textContent=state.bridge?(state.connected?'Pont actif · LED connectées':'Pont actif · Reconnexion…'):'Pont désactivé';$('home-status').classList.toggle('on',state.bridge&&state.connected);
-  $('bridge-toggle').textContent=state.bridge?'Arrêter le pont':'Activer le pont';$('bridge-toggle').disabled=pending||(!state.device&&!state.bridge);
-  $('pairing').disabled=pending||!state.pairingReady;$('scan').disabled=pending||state.bridge;$('scan').classList.toggle('busy-spin',pending&&busyAction==='scan');
-  $('reconnect').disabled=pending||state.bridge||!state.device;$('disconnect').disabled=pending||state.bridge||!state.connected;
-  $('autostart-row').hidden=state.platform!=='windows';$('linux-service').hidden=state.platform==='windows';$('autostart').checked=Boolean(state.autostart);$('autostart').disabled=pending;
+  $('bridge-toggle').textContent=state.bridge?'Arrêter le pont':'Activer le pont';$('bridge-toggle').disabled=pending||Boolean(state.gateway?.active)||(!state.device&&!state.bridge);
+  $('pairing').disabled=pending||!state.pairingReady;$('scan').disabled=pending||locked;$('scan').classList.toggle('busy-spin',pending&&busyAction==='scan');
+  $('reconnect').disabled=pending||locked||!state.device;$('disconnect').disabled=pending||locked||!state.connected;
+  $('autostart-row').hidden=state.platform!=='windows';$('linux-service').hidden=state.platform==='windows';$('autostart').checked=Boolean(state.autostart);$('autostart').disabled=pending||Boolean(state.gateway?.active);
   $('home-explanation').textContent=state.platform==='windows'?'Fermer la fenêtre laisse le pont actif près de l’horloge. Gardez votre PC allumé, sans veille.':'Gardez ce Raspberry Pi ou PC Linux allumé et à portée des LED. Le mode service fonctionne aussi sans interface graphique.';
   $('service-command').textContent=`./lantern service --device ${state.device||'ADRESSE_LED'} --install`;
   $('device-detail').textContent=state.device?`${state.deviceName||'Contrôleur LED'} · ${state.device}`:'Aucun contrôleur sélectionné.';
-  $('status-text').textContent=state.status||'Un éclairage personnel. Sans compte, sans cloud.';
+  $('status-text').textContent=(activePage==='gateway'||activePage==='settings')&&state.gateway?.available?(state.gateway.active?'Maison est actif. Les commandes directes et les modifications sont verrouillées.':'Préparez vos éclairages, puis activez Maison.'):(state.status||'Un éclairage personnel. Sans compte, sans cloud.');
   renderFavorites();
   $('connection-progress').hidden=!state.connecting;$('connection-attempt').textContent=`Tentative ${state.connectionAttempt||1} sur 2. Aucun réglage lumineux n’est réappliqué.`;
   $('connection-issue').hidden=!state.connectionIssue;
   if(state.connectionIssue){$('issue-title').textContent=state.connectionIssue.title;$('issue-message').textContent=state.connectionIssue.message;}
-  $('favorite-save').disabled=pending||!state.connected||state.bridge||!state.canSaveFavorite;
+  $('favorite-save').disabled=pending||!state.connected||state.bridge||Boolean(state.gateway?.active)||!state.canSaveFavorite;
   $('diagnose').disabled=pending;$('check-updates').disabled=pending;
-  const signature=JSON.stringify([state.devices,state.connected,state.device,pending,state.bridge]);
+  const signature=JSON.stringify([state.devices,state.connected,state.device,pending,state.bridge,state.gateway?.active]);
   if($('device-list').dataset.signature!==signature){$('device-list').dataset.signature=signature;renderDevices();}
   const effects=state.effects||[];
   const sig=effects.map(e=>e.code+':'+e.isScene).join(',');
@@ -87,20 +89,20 @@ function render(next){
 }
 function renderDevices(){
   const devices=state.devices||[];if(!devices.length){$('device-list').replaceChildren(emptyDeviceList.cloneNode(true));return;}
-  $('device-list').replaceChildren();for(const device of devices){const row=document.createElement('div');row.className='device-row';const tile=document.createElement('span');tile.className='icon-tile blue';tile.innerHTML=icon('bluetooth');const text=document.createElement('div');const name=document.createElement('strong');name.textContent=device.name;const detail=document.createElement('small');detail.textContent=device.address+(device.rssi?' · '+device.rssi+' dBm':'');text.append(name,detail);const button=document.createElement('button');button.className='secondary';button.textContent=state.connected&&state.device===device.address?'Connecté':'Connecter';button.disabled=pending||state.bridge||(state.connected&&state.device===device.address);button.onclick=()=>act('connect',{address:device.address,name:device.name},'Votre lumière est connectée.');row.append(tile,text,button);$('device-list').append(row);}
+  $('device-list').replaceChildren();for(const device of devices){const row=document.createElement('div');row.className='device-row';const tile=document.createElement('span');tile.className='icon-tile blue';tile.innerHTML=icon('bluetooth');const text=document.createElement('div');const name=document.createElement('strong');name.textContent=device.name;const detail=document.createElement('small');detail.textContent=device.address+(device.rssi?' · '+device.rssi+' dBm':'');text.append(name,detail);const button=document.createElement('button');button.className='secondary';button.textContent=state.connected&&state.device===device.address?'Connecté':'Connecter';button.disabled=pending||(state.bridge||state.gateway?.active)||(state.connected&&state.device===device.address);button.onclick=()=>act('connect',{address:device.address,name:device.name},'Votre lumière est connectée.');row.append(tile,text,button);$('device-list').append(row);}
 }
 let favoriteSignature='';
 function renderFavorites(){
-  const signature=JSON.stringify([state.favorites,state.connected,state.bridge,pending,state.favoritesError]);
+  const signature=JSON.stringify([state.favorites,state.connected,state.bridge,state.gateway?.active,pending,state.favoritesError]);
   if(signature===favoriteSignature)return;favoriteSignature=signature;
   $('favorites-list').replaceChildren();
   $('favorites-note').textContent=state.favoritesError||((state.favorites||[]).length?'Un clic pour retrouver votre ambiance.':'Choisissez une couleur ou une animation pour créer votre premier favori.');
   for(const favorite of state.favorites||[]){
     const row=document.createElement('div');row.className='favorite-card';
-    const apply=document.createElement('button');apply.className='favorite-apply';apply.setAttribute('aria-label','Appliquer '+favorite.name);apply.disabled=pending||!state.connected||state.bridge;
+    const apply=document.createElement('button');apply.className='favorite-apply';apply.setAttribute('aria-label','Appliquer '+favorite.name);apply.disabled=pending||!state.connected||state.bridge||Boolean(state.gateway?.active);
     const dot=document.createElement('span');dot.className='favorite-dot';dot.style.backgroundColor='#'+favorite.rgb;
     const text=document.createElement('span');const title=document.createElement('strong');title.textContent=favorite.name;const caption=document.createElement('small');caption.textContent=(favorite.mode==='effect'?'Animation':'Couleur')+' · '+favorite.brightness+' %';text.append(title,caption);apply.append(dot,text);apply.onclick=()=>act('favorite-apply',{id:favorite.id},favorite.name+' — votre ambiance est prête.');
-    const remove=document.createElement('button');remove.className='icon-button';remove.setAttribute('aria-label','Supprimer '+favorite.name);remove.innerHTML=icon('close');remove.disabled=pending;remove.onclick=()=>{if(confirm('Supprimer le favori « '+favorite.name+' » ?'))act('favorite-delete',{id:favorite.id});};
+    const remove=document.createElement('button');remove.className='icon-button';remove.setAttribute('aria-label','Supprimer '+favorite.name);remove.innerHTML=icon('close');remove.disabled=pending||state.bridge||Boolean(state.gateway?.active);remove.onclick=()=>{if(confirm('Supprimer le favori « '+favorite.name+' » ?'))act('favorite-delete',{id:favorite.id});};
     row.append(apply,remove);$('favorites-list').append(row);
   }
 }

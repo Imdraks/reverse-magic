@@ -64,7 +64,7 @@ public sealed partial class MainForm
     {
         using var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run");
         var (favorites,favoritesError)=favoriteStore.Snapshot();
-        return new { version="0.7.1",favorites,favoritesError,canSaveFavorite=desktopKnown&&!controllerMic&&favoritesError==null,connectionIssue=desktopIssue,connecting=desktopConnectCancel!=null,connectionAttempt=desktopAttempt,platform="windows", connected=ble.IsReady, device=lastDevice is null?null:FormatAddress(lastDevice.Address), deviceName=lastDevice?.Name,
+        return new { gateway=gatewayHost?.State??JsonSerializer.SerializeToElement(new {available=false,active=false}),version="0.8.0",favorites,favoritesError,canSaveFavorite=desktopKnown&&!controllerMic&&favoritesError==null,connectionIssue=desktopIssue,connecting=desktopConnectCancel!=null,connectionAttempt=desktopAttempt,platform="windows", connected=ble.IsReady, device=lastDevice is null?null:FormatAddress(lastDevice.Address), deviceName=lastDevice?.Name,
             on=desktopOn, brightness=brightness.Value, rgb=$"{selectedColor.R:X2}{selectedColor.G:X2}{selectedColor.B:X2}",mic=controllerMic,
             bridge=homeKit!=null,pairingReady=pairingCode!=null,autostart=key?.GetValue("LanternDirectHomeKit") is string,
             devices=found.Values.Select(x=>new {address=FormatAddress(x.Address),name=x.Name,rssi=x.RSSI}).ToArray(),effects=catalog,
@@ -78,7 +78,7 @@ public sealed partial class MainForm
     }
     private async void DesktopMessage(object? sender,CoreWebView2WebMessageReceivedEventArgs e)
     {
-        if(!DesktopOrigin(e.Source)||e.WebMessageAsJson.Length>8192)return;
+        if(!DesktopOrigin(e.Source)||e.WebMessageAsJson.Length>3*1024*1024)return;
         int id;
         JsonElement root;
         try{using var document=JsonDocument.Parse(e.WebMessageAsJson);root=document.RootElement.Clone();id=root.GetProperty("id").GetInt32();}catch{return;}
@@ -104,8 +104,27 @@ public sealed partial class MainForm
     private async Task<object> DesktopCommand(string action,JsonElement data)
     {
         if(action=="quit"){BeginInvoke(()=>{quitting=true;Close();});return new {};}
+        if(action=="gateway-autostart")
+        {
+            using var key=Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run");
+            if(data.GetProperty("enabled").GetBoolean())key.SetValue("LanternDirectHomeKit",$"\"{Application.ExecutablePath}\" --desktop-homekit");
+            else key.DeleteValue("LanternDirectHomeKit",false);
+            return new {state=DesktopState()};
+        }
+        if(action.StartsWith("gateway-",StringComparison.Ordinal))
+        {
+            if(homeKit!=null)throw new InvalidOperationException("Arrêtez le pont Magic Lantern avant de gérer les autres éclairages.");
+            if(busy||reconnecting)throw new InvalidOperationException("Attendez la fin de la connexion en cours.");
+            gatewayHost??=new GatewayHost();
+            var operation=action[8..];
+            if(operation is "start" or "test-device" or "refresh-devices" or "apply" or "apply-group"){autoReconnectPaused=true;StopScan();ble.Disconnect();controllerMic=false;}
+            var result=await gatewayHost.Command(operation,data);
+            tray.Visible=gatewayHost.Active;
+            return new {gatewayResult=result,state=DesktopState()};
+        }
+        if(GatewayActive&&action is not ("diagnose" or "check-updates" or "open-downloads"))throw new InvalidOperationException("Maison est actif. Désactivez le pont avant les commandes directes et les modifications.");
         if((busy||reconnecting)&&action is not ("bridge-stop" or "diagnose" or "check-updates" or "open-downloads" or "favorite-delete" or "autostart"))throw new InvalidOperationException("Une connexion est déjà en cours. Patientez un instant.");
-        if(homeKit!=null&&action is not ("bridge-stop" or "pairing" or "autostart" or "favorite-delete" or "diagnose" or "check-updates" or "open-downloads"))throw new InvalidOperationException("Maison pilote vos LED. Arrêtez le pont pour utiliser les commandes directes.");
+        if(homeKit!=null&&action is not ("bridge-stop" or "pairing" or "autostart" or "diagnose" or "check-updates" or "open-downloads"))throw new InvalidOperationException("Maison pilote vos LED. Arrêtez le pont pour utiliser les commandes directes.");
         switch(action)
         {
             case "scan":

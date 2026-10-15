@@ -8,7 +8,7 @@ New-ItemProperty -Path $runKey -Name LanternDirectHomeKit -Value '"C:\old-portab
 $installed = Start-Process -FilePath $setup -ArgumentList '/S' -Wait -PassThru
 if ($installed.ExitCode -ne 0) { throw "Installer exit code: $($installed.ExitCode)" }
 Write-Host 'Installation complete; checking packaged runtime.'
-foreach ($file in @('LanternDirect.exe','node.exe','homekit\server.js','gateway\cli.js','gateway\bridge.example.json','docs\GATEWAY.md','Uninstall.exe')) {
+foreach ($file in @('LanternDirect.exe','node.exe','homekit\server.js','gateway\cli.js','gateway\desktop-worker.js','gateway\desktop-runtime.js','gateway\desktop-service.js','gateway\bridge.example.json','docs\GATEWAY.md','Uninstall.exe')) {
     if (-not (Test-Path (Join-Path $root $file))) { throw "Missing installed file: $file" }
 }
 $nodeVersion = & (Join-Path $root 'node.exe') --version
@@ -20,6 +20,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Packaged LSC/Tuya runtime check failed' }
 Write-Host 'Checking installed LSC worker.'
 & (Join-Path $root 'node.exe') (Join-Path $PSScriptRoot 'lsc-smoke.js') $root
 if ($LASTEXITCODE -ne 0) { throw 'Installed Windows Tuya worker exchange failed' }
+Write-Host 'Checking installed desktop bridge and encrypted restore.'
+& (Join-Path $root 'node.exe') (Join-Path $PSScriptRoot 'desktop-smoke.js') $root
+if ($LASTEXITCODE -ne 0) { throw 'Installed desktop bridge smoke failed' }
 Write-Host 'Checking native Bluetooth worker.'
 $workerInfo = [Diagnostics.ProcessStartInfo]::new((Join-Path $root 'LanternDirect.exe'))
 $workerInfo.UseShellExecute = $false
@@ -65,6 +68,12 @@ $shortcut = Join-Path ([Environment]::GetFolderPath('Programs')) 'Lantern Bridge
 if (-not (Test-Path $shortcut)) { throw 'Missing Start menu shortcut' }
 $runValue = (Get-ItemProperty -Path $runKey -Name LanternDirectHomeKit).LanternDirectHomeKit
 if ($runValue -ne ('"' + (Join-Path $root 'LanternDirect.exe') + '" --homekit')) { throw 'Autostart path was not migrated' }
+Write-Host 'Checking desktop bridge autostart migration.'
+New-ItemProperty -Path $runKey -Name LanternDirectHomeKit -Value '"C:\old-portable\LanternDirect.exe" --desktop-homekit' -PropertyType String -Force | Out-Null
+$upgraded = Start-Process -FilePath $setup -ArgumentList '/S' -Wait -PassThru
+if ($upgraded.ExitCode -ne 0) { throw 'Second installer run failed' }
+$managedRunValue = (Get-ItemProperty -Path $runKey -Name LanternDirectHomeKit).LanternDirectHomeKit
+if ($managedRunValue -ne ('"' + (Join-Path $root 'LanternDirect.exe') + '" --desktop-homekit')) { throw 'Desktop bridge autostart mode was not preserved' }
 Write-Host 'Checking desktop startup.'
 $app = Start-Process -FilePath (Join-Path $root 'LanternDirect.exe') -PassThru
 try {
@@ -81,6 +90,9 @@ try {
 }
 New-Item -ItemType Directory -Path (Join-Path $settings 'homekit\installer-test') -Force | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $settings 'gateway\installer-test') -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $settings 'desktop\installation') -Force | Out-Null
+$desktopFile=Join-Path $settings 'desktop\installation\preserve.txt'
+Set-Content -Path $desktopFile -Value 'desktop bridge preservation test' -NoNewline
 $favoriteFile = Join-Path $settings 'favorites.json'
 $pairingFile = Join-Path $settings 'homekit\installer-test\preserve.txt'
 Set-Content -Path $favoriteFile -Value '[]' -NoNewline
@@ -96,5 +108,6 @@ if (Test-Path $shortcut) { throw 'Start menu shortcut was not removed' }
 if ((Get-Content -Raw $favoriteFile) -ne '[]') { throw 'Favorites were changed by uninstall' }
 if ((Get-Content -Raw $pairingFile) -ne 'pairing storage preservation test') { throw 'Pairing storage was changed by uninstall' }
 if ((Get-Content -Raw $gatewayFile) -ne 'gateway storage preservation test') { throw 'Gateway storage was changed by uninstall' }
+if ((Get-Content -Raw $desktopFile) -ne 'desktop bridge preservation test') { throw 'Desktop bridge storage was changed by uninstall' }
 if (Get-ItemProperty -Path $runKey -Name LanternDirectHomeKit -ErrorAction SilentlyContinue) { throw 'Installed autostart registration was not removed' }
 Write-Host 'Windows installer, bundled runtime, app startup, autostart migration, shortcuts, uninstall and user-data preservation verified.'

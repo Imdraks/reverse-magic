@@ -30,7 +30,7 @@ public sealed partial class MainForm
         menu.Items.Add("Ouvrir", null, (_, _) => { Show(); WindowState = FormWindowState.Normal; Activate(); });
         menu.Items.Add("Quitter le pont", null, (_, _) => { quitting = true; Close(); });
         tray.ContextMenuStrip = menu; tray.DoubleClick += (_, _) => { Show(); Activate(); };
-        FormClosing += (_, e) => { if (!quitting && homeKit != null && e.CloseReason == CloseReason.UserClosing) { e.Cancel = true; Hide(); } };
+        FormClosing += (_, e) => { if (!quitting && (homeKit != null || GatewayActive) && e.CloseReason == CloseReason.UserClosing) { e.Cancel = true; Hide(); } };
         FormClosed += (_, _) => { StopHomeKit(); tray.Dispose(); };
         Shown += async (_, _) =>
         {
@@ -42,6 +42,7 @@ public sealed partial class MainForm
     }
     private async Task StartHomeKit()
     {
+        if (GatewayActive) throw new InvalidOperationException("Désactivez le pont multi-éclairages avant de lancer le module Magic Lantern.");
         if (homeKit != null) return;
         if (lastDevice == null) throw new InvalidOperationException("Connectez une première fois votre contrôleur avant d’activer Maison.");
         if (!ble.IsReady) { try { await Connect(lastDevice); } catch { /* Publish offline and retry from HomeKit status polls. */ } }

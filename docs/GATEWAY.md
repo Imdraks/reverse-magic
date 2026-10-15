@@ -2,7 +2,7 @@
 
 Lantern Bridge regroupe plusieurs éclairages dans Apple Maison, avec un seul appairage. Le PC Windows ou Raspberry Pi/Linux reste allumé, sur le réseau de l’iPhone et à portée des appareils Bluetooth. Aucun logiciel supplémentaire sur l’iPhone : utilisez Maison. Pour l’accès depuis l’extérieur et certaines automatisations, Apple exige aussi un concentrateur HomePod ou Apple TV.
 
-Cette version établit le cœur multi-appareils. Sa configuration passe par un fichier et le terminal. Le GUI conserve les commandes et favoris du module Magic Lantern ; son ancien bouton Maison publie encore une lampe individuelle. Ce bouton et le nouveau pont ne doivent pas posséder les mêmes LED simultanément.
+Le [gestionnaire graphique](DESKTOP.md) permet maintenant d’ajouter des éclairages, les classer par pièce, activer le pont et sauvegarder son installation. Ce document décrit l’alternative fichier/terminal, avec un stockage distinct. Le GUI conserve aussi l’ancien pont Magic Lantern individuel. Deux ponts ne doivent pas posséder les mêmes LED simultanément.
 
 ## Appareils pris en charge
 
@@ -15,7 +15,7 @@ Le périmètre est exclusivement l’éclairage. [LSC Smart Connect / Tuya LAN](
 
 ## Installation
 
-Utilisez les paquets complets de la [release](https://github.com/Imdraks/reverse-magic/releases/tag/v0.7.1). Les noms de fichiers `LanternDirect` sont conservés pour faciliter la mise à jour et protéger les données existantes.
+Utilisez les paquets complets de la [release](https://github.com/Imdraks/reverse-magic/releases/tag/v0.8.0). Les noms de fichiers `LanternDirect` sont conservés pour faciliter la mise à jour et protéger les données existantes.
 
 Sur Linux/Pi 64 bits : extraire le paquet ARM64 (Pi) ou x64 (PC), installer `python3-venv` et BlueZ, puis lancer `./install.sh`. Les détails radio restent dans [le guide Linux](../linux/README.md). Le pont HTTP seul n’utilise pas la radio Bluetooth.
 
@@ -37,7 +37,7 @@ Sur Windows : installer `LanternDirect-Setup.exe`, puis ouvrir PowerShell dans `
 .\node.exe .\gateway\cli.js run --config "$env:USERPROFILE\bridge.json"
 ```
 
-Le raccourci `LanternDirect.exe --gateway run --config CHEMIN` est aussi disponible pour les lanceurs. Sous PowerShell, préférer `node.exe` pour garder le terminal attaché. L’option de démarrage automatique du GUI concerne encore le pont LED individuel ; pour le pont multi-appareils Windows, créer une tâche de session qui lance `node.exe` avec le chemin absolu de `gateway\cli.js`, `run` et `--config` et le dossier du programme comme répertoire de travail.
+Le raccourci `LanternDirect.exe --gateway run --config CHEMIN` est aussi disponible pour les lanceurs. Sous PowerShell, préférer `node.exe` pour garder le terminal attaché. L’option de démarrage automatique dans Réglages concerne le projet multi-éclairages de l’interface ; l’ancien module conserve son option individuelle. Pour un pont configuré par fichier sous Windows, créer une tâche de session qui lance `node.exe` avec le chemin absolu de `gateway\cli.js`, `run` et `--config` et le dossier du programme comme répertoire de travail.
 
 ## Configuration
 

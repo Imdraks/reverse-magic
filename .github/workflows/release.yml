@@ -6,7 +6,7 @@ on:
       release_tag:
         description: Release version tag
         required: true
-        default: v0.7.1
+        default: v0.8.0
         type: string
 
 permissions:
@@ -74,6 +74,8 @@ jobs:
           ./lantern gateway check --config /tmp/lantern-bridge-ci.json
           ./lantern gateway-service --config /tmp/lantern-bridge-ci.json > /tmp/lantern-bridge.service
           systemd-analyze verify /tmp/lantern-bridge.service
+          runtime/bin/node -e 'const {DesktopManager}=require("./gateway/desktop-manager");(async()=>{const manager=await new DesktopManager("/tmp/lantern-desktop-ci").init();console.log((await manager.snapshot()).serviceUnit);await manager.close();})().catch(()=>process.exit(1))' > /tmp/lantern-bridge-desktop.service
+          systemd-analyze verify /tmp/lantern-bridge-desktop.service
           runtime/bin/node --version
           runtime/bin/node -e 'require("./homekit/node_modules/tuyapi");if(!require("./gateway/registry").adapters["lsc-tuya-light"])throw Error("LSC missing")'
           .venv/bin/python -c 'import bleak, dbus_fast'
@@ -179,8 +181,8 @@ jobs:
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           cp release/windows/LanternDirect.exe release/LanternDirect.exe
           cp docs/GATEWAY.md release/GUIDE-PONT.md
-          cp release/interface/lantern-light.png release/LanternDirect-interface-claire.png
-          cp release/interface/lantern-dark.png release/LanternDirect-interface-sombre.png
+          cp release/interface/bridge-light.png release/LanternDirect-interface-claire.png
+          cp release/interface/bridge-dark.png release/LanternDirect-interface-sombre.png
           git archive --format=zip HEAD windows windows-tests homekit gateway ui installer scripts/package-installer.py scripts/package-homekit.py MAISON-WINDOWS.txt docs > release/LanternDirect-Windows-sources.zip
           git archive --format=zip HEAD lantern linux homekit gateway ui windows/effects.json scripts/package-linux.py docs > release/LanternDirect-Linux-sources.zip
           cd release
@@ -254,7 +256,7 @@ jobs:
           PY
           else
             gh release create "$RELEASE_TAG" --draft --prerelease --target "$GITHUB_SHA" \
-              --title "Lantern Bridge $RELEASE_TAG — Reconnexion automatique" --notes-file .github/release-notes.md
+              --title "Lantern Bridge $RELEASE_TAG — Gestion des éclairages et sauvegardes" --notes-file .github/release-notes.md
           fi
           gh release upload "$RELEASE_TAG" \
             release/LanternDirect-Setup.exe release/LanternDirect-interface-claire.png release/LanternDirect-interface-sombre.png \
@@ -273,4 +275,4 @@ jobs:
           assert all(asset['state'] == 'uploaded' and asset['size'] > 0 for asset in assets)
           PY
           gh release edit "$RELEASE_TAG" --draft=false --prerelease \
-            --title "Lantern Bridge $RELEASE_TAG — Reconnexion automatique" --notes-file .github/release-notes.md
+            --title "Lantern Bridge $RELEASE_TAG — Gestion des éclairages et sauvegardes" --notes-file .github/release-notes.md

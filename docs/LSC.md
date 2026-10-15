@@ -12,6 +12,10 @@ L’application comprend aussi des composants pour d’autres familles de produi
 
 Voir [l’étude et les sources](research/lsc-smart-connect.md). La référence Action **3208075** fournie par l’utilisateur reste à vérifier sur appareil : l’accès direct à sa fiche est bloqué dans l’environnement de recherche et l’APK ne fournit pas son schéma de DP. Aucun profil n’est présenté comme certifié pour cette référence.
 
+## Configuration depuis l’interface
+
+Dans **Le pont**, Maison désactivé, choisir **Ajouter un éclairage → LSC / Tuya**. L’assistant accepte l’IP, la version, le profil et les identifiants locaux, ainsi qu’un mapping DP avancé. Le bouton d’inspection est en lecture seule ; aucun profil candidat n’est appliqué automatiquement. Les identifiants sont conservés dans le stockage privé de cette installation, séparée du CLI. Voir [le guide de l’interface](DESKTOP.md). Les paragraphes suivants décrivent aussi la configuration par variables pour le terminal.
+
 ## Préparer un appareil
 
 Il faut connaître **son IP locale**, **son identifiant Tuya**, **sa clé locale de 16 octets**, **sa version de protocole** et **ses DP**. Réserver son IP dans le routeur évite de perdre la connexion après un changement DHCP. Protocoles acceptés : **3.1, 3.3, 3.4 et 3.5**. La version 3.2 n’est pas activée dans ce module. La version doit correspondre au firmware, elle ne se choisit pas arbitrairement. Tuya 3.1 chiffre les commandes, mais certains messages d’état sont en clair selon ce protocole ancien.

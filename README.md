@@ -6,17 +6,23 @@ Le projet se concentre sur l’éclairage : ampoules, rubans, luminaires et cont
 
 ## Installer
 
-[**Télécharger v0.7.1 — reconnexion automatique, version de test**](https://github.com/Imdraks/reverse-magic/releases/tag/v0.7.1)
+[**Télécharger v0.8.0 — assistant et sauvegardes, version de test**](https://github.com/Imdraks/reverse-magic/releases/tag/v0.8.0)
 
-- **Windows** : [installateur](https://github.com/Imdraks/reverse-magic/releases/download/v0.7.1/LanternDirect-Setup.exe) ou [paquet portable complet](https://github.com/Imdraks/reverse-magic/releases/download/v0.7.1/LanternDirect-Windows-HomeKit.zip).
-- **Raspberry Pi OS 64 bits** : [ARM64](https://github.com/Imdraks/reverse-magic/releases/download/v0.7.1/LanternDirect-Linux-arm64.tar.gz), installation terminal et service sans écran.
-- **PC Linux** : [x64](https://github.com/Imdraks/reverse-magic/releases/download/v0.7.1/LanternDirect-Linux-x64.tar.gz), terminal, service et interface locale.
+- **Windows** : [installateur](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.0/LanternDirect-Setup.exe) ou [paquet portable complet](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.0/LanternDirect-Windows-HomeKit.zip).
+- **Raspberry Pi OS 64 bits** : [ARM64](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.0/LanternDirect-Linux-arm64.tar.gz), installation terminal et service sans écran.
+- **PC Linux** : [x64](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.0/LanternDirect-Linux-x64.tar.gz), terminal, service et interface locale.
 
 Les noms techniques `LanternDirect` et les dossiers de données sont conservés pour faciliter les mises à jour. L’installateur contient Node et le pont ; le runtime .NET est inclus. Sous Linux, installer Python/BlueZ selon [le guide](linux/README.md). WebView2 est nécessaire pour le GUI Windows moderne.
 
 ## Commencer avec le nouveau pont
 
-[**Guide complet : configuration, appairage, service et migration**](docs/GATEWAY.md)
+[**Guide de l’interface : ajout, pièces, Maison et sauvegarde**](docs/DESKTOP.md)
+
+Ouvrir **Le pont → Ajouter un éclairage**, renseigner la connexion, tester puis enregistrer. Activer Maison et afficher son code pour l’appairage. Pour ajouter un autre appareil ensuite : **désactiver Maison, ajouter, puis réactiver**. Les commandes directes restent bloquées pendant le mode Maison.
+
+Dans Réglages : démarrage automatique, sauvegarde chiffrée, restauration et journal de session. Les pièces et commandes de groupe sont disponibles dans le tableau de bord. Le module Magic Lantern historique reste accessible.
+
+[**Guide du terminal : configuration, appairage, service et migration**](docs/GATEWAY.md)
 
 ```sh
 # Linux / Raspberry Pi, après ./install.sh
@@ -27,7 +33,7 @@ Les noms techniques `LanternDirect` et les dossiers de données sont conservés 
 ./lantern gateway run --config "$HOME/bridge.json"
 ```
 
-Sous Windows, depuis le dossier installé : `node.exe gateway/cli.js init`, puis `check`, `run` et `pairing`, avec `--config CHEMIN`. Le guide détaille les commandes PowerShell. La configuration multi-appareils se fait actuellement par fichier/terminal ; le GUI au style Apple conserve le module Magic Lantern, ses commandes manuelles et ses favoris.
+Sous Windows, depuis le dossier installé : `node.exe gateway/cli.js init`, puis `check`, `run` et `pairing`, avec `--config CHEMIN`. Le guide détaille les commandes PowerShell. Le terminal reste une alternative indépendante à l’interface. Le GUI conserve aussi le module Magic Lantern, ses commandes manuelles et ses favoris.
 
 ## Compatibilité actuelle
 

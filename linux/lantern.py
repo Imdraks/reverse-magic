@@ -189,6 +189,7 @@ def parser():
         if name not in ('scan','desktop-install'):
             cmd.add_argument('--device', type=address, required=name != 'gui')
             cmd.add_argument('--data-dir', type=Path, help='Racine du stockage persistant (identité et appairages)')
+        if name == 'gui': cmd.add_argument('--homekit',action='store_true',help='Activer le pont multi-éclairages au lancement')
         if name == 'scan':
             cmd.add_argument('--seconds', type=float, default=12); cmd.add_argument('--all', action='store_true')
         elif name == 'bridge': cmd.add_argument('--show-code', action='store_true', help='Afficher le code même si stdout est redirigé ; ne pas utiliser dans les journaux du service')

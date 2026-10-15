@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>LanternDirect</AssemblyName>
-    <Version>1.5.1</Version>
+    <Version>1.6.0</Version>
     <Product>Lantern Bridge</Product>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
@@ -17,7 +17,7 @@
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="effects.json" />
-    <EmbeddedResource Include="../ui/index.html;../ui/style.css;../ui/app.js;../ui/icon.svg" LogicalName="LanternDirect.ui.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../ui/index.html;../ui/style.css;../ui/app.js;../ui/gateway.js;../ui/icon.svg" LogicalName="LanternDirect.ui.%(Filename)%(Extension)" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4258.31" />
   </ItemGroup>
   <Target Name="ExcludeUnusedWebViewWpf" BeforeTargets="ResolveAssemblyReferences">
