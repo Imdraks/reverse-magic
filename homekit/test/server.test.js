@@ -21,7 +21,8 @@ test('packaged server startup, QR generation and shutdown with its Windows paren
         const event = JSON.parse(line);
         if (event.kind === 'pairing') pairing = event;
         if (event.kind === 'ready') resolve();
-        if (event.kind === 'request') child.stdin.write(JSON.stringify({ kind: 'response', id: event.id, ok: true, result: event.op === 'status' ? { connected: true } : {} }) + '\n');
+        // A final status request can arrive after the parent deliberately closes stdin.
+        if (event.kind === 'request' && !child.stdin.writableEnded) child.stdin.write(JSON.stringify({ kind: 'response', id: event.id, ok: true, result: event.op === 'status' ? { connected: true } : {} }) + '\n');
       } catch (error) { reject(error); }
     });
   });
