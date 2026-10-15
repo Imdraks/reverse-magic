@@ -36,6 +36,10 @@ Le périmètre demandé est exclusivement l’éclairage. Les modules expérimen
 
 LSC utilise une lecture réelle des DP, sans extinction initiale ni restauration aveugle. Une écriture est relue avant validation. Les clés passent par variables d’environnement et un canal privé, jamais par le fichier de configuration. Un processus court par opération permet d’arrêter entièrement les reprises internes de la bibliothèque en cas de délai dépassé. Les opérations d’une même IP/port sont sérialisées et la concurrence globale est bornée.
 
+### IV de Tuya 3.5
+
+Le chiffrement GCM de TuyAPI 7.7.1 propose par défaut un IV dérivé de l’heure, qui peut se répéter lors de trames rapprochées. Le worker fournit un IV aléatoire de 96 bits à chaque chiffrement ordinaire, via l’option explicite déjà prise en charge par le chiffreur de cette version. Les IV explicites imposés par la dérivation de session restent inchangés. La bibliothèque est épinglée et les tests indépendants vérifient l’absence de répétition par clé ainsi que l’interopérabilité de la négociation et des commandes.
+
 ## Niveau de vérification
 
 Les tests TCP utilisent un émulateur indépendant construit avec `node:crypto`, sans le parseur de TuyAPI : CRC, AES, HMAC, AES-GCM et négociation de session sont exercés réellement pour les versions 3.1, 3.3, 3.4 et 3.5. Les fixtures ne sont jamais envoyées aux produits réels. Un vrai client HomeKit chiffré vérifie ensuite les caractéristiques exposées, les écritures de couleur/blanc et l’isolation des pannes.

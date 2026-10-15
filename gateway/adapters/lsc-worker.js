@@ -1,6 +1,7 @@
 'use strict';
 // Private single-operation process: exiting cancels library retries and pending sockets.
 const readline=require('node:readline');
+const crypto=require('node:crypto');
 const Tuya=require('../../homekit/node_modules/tuyapi');
 const {decode,encode,probe}=require('./lsc-codec');
 let device,finished=false;
@@ -14,6 +15,12 @@ input.once('line',async line=>{
     const id=process.env[options.deviceIdEnv],key=process.env[options.localKeyEnv];
     if(typeof id!=='string'||!/^[A-Za-z0-9_-]{6,64}$/.test(id)||typeof key!=='string'||Buffer.byteLength(key)!==16||key.length!==16)throw new Error('Credentials unavailable');
     device=new Tuya({id,key,ip:options.ip,port:options.port||6668,version:options.version,issueGetOnConnect:false,issueRefreshOnConnect:false,issueRefreshOnPing:false});
+    if(options.version==='3.5'){
+      // TuyAPI 7.7.1 defaults to a timestamp-based GCM IV, which can repeat in a burst.
+      // Keep explicit protocol IVs and give every ordinary packet a fresh 96-bit nonce.
+      const cipher=device.device.parser.cipher,encrypt=cipher.encrypt.bind(cipher);
+      cipher.encrypt=parameters=>encrypt({...parameters,iv:parameters.iv??crypto.randomBytes(12)});
+    }
     device.on('error',()=>finish(false));
     await device.connect();
     let dps=(await device.get({schema:true}))?.dps;

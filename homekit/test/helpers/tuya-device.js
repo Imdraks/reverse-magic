@@ -5,7 +5,7 @@ function crc32(buffer){let crc=0xffffffff;for(const byte of buffer){crc^=byte;fo
 function ecb(data,key,decrypt=false,padding=true){const cipher=crypto[decrypt?'createDecipheriv':'createCipheriv']('aes-128-ecb',key,null);cipher.setAutoPadding(padding);return Buffer.concat([cipher.update(data),cipher.final()]);}
 function hmac(data,key){return crypto.createHmac('sha256',key).update(data).digest();}
 class TuyaDeviceFixture{
-  constructor(version,dps,key='0123456789abcdef'){this.version=version;this.dps={...dps};this.key=Buffer.from(key);this.writes=[];this.sockets=new Set();this.silent=false;this.rejectWrites=false;this.sessions=0;}
+  constructor(version,dps,key='0123456789abcdef'){this.version=version;this.dps={...dps};this.key=Buffer.from(key);this.writes=[];this.sockets=new Set();this.silent=false;this.rejectWrites=false;this.sessions=0;this.nonces=new Set();this.reusedNonces=0;}
   async start(){
     this.server=net.createServer(socket=>{
       this.sockets.add(socket);socket.on('close',()=>this.sockets.delete(socket));socket.on('error',()=>{});
@@ -38,7 +38,7 @@ class TuyaDeviceFixture{
             const frame=pending.subarray(0,length);pending=pending.subarray(length);
             const command=frame.readUInt32BE(modern?10:8),sequence=frame.readUInt32BE(modern?6:4);
             let payload;
-            if(modern){const decipher=crypto.createDecipheriv('aes-128-gcm',key(),frame.subarray(18,30));decipher.setAAD(frame.subarray(4,18));decipher.setAuthTag(frame.subarray(-20,-4));payload=Buffer.concat([decipher.update(frame.subarray(30,-20)),decipher.final()]);}
+            if(modern){const nonce=key().toString('hex')+':'+frame.subarray(18,30).toString('hex');if(this.nonces.has(nonce))this.reusedNonces++;this.nonces.add(nonce);const decipher=crypto.createDecipheriv('aes-128-gcm',key(),frame.subarray(18,30));decipher.setAAD(frame.subarray(4,18));decipher.setAuthTag(frame.subarray(-20,-4));payload=Buffer.concat([decipher.update(frame.subarray(30,-20)),decipher.final()]);}
             else{
               const tail=this.version==='3.4'?36:8;
               if(tail===36){if(!hmac(frame.subarray(0,-36),key()).equals(frame.subarray(-36,-4)))throw new Error('Bad HMAC');}

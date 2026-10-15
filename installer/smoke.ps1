@@ -7,6 +7,7 @@ New-Item -Path $runKey -Force | Out-Null
 New-ItemProperty -Path $runKey -Name LanternDirectHomeKit -Value '"C:\old-portable\LanternDirect.exe" --homekit' -PropertyType String -Force | Out-Null
 $installed = Start-Process -FilePath $setup -ArgumentList '/S' -Wait -PassThru
 if ($installed.ExitCode -ne 0) { throw "Installer exit code: $($installed.ExitCode)" }
+Write-Host 'Installation complete; checking packaged runtime.'
 foreach ($file in @('LanternDirect.exe','node.exe','homekit\server.js','gateway\cli.js','gateway\bridge.example.json','docs\GATEWAY.md','Uninstall.exe')) {
     if (-not (Test-Path (Join-Path $root $file))) { throw "Missing installed file: $file" }
 }
@@ -16,8 +17,10 @@ if ($nodeVersion -ne 'v24.19.0') { throw "Unexpected bundled Node runtime" }
 if ($LASTEXITCODE -ne 0) { throw 'Packaged gateway configuration check failed' }
 & (Join-Path $root 'node.exe') -e 'const path=require("node:path");const root=process.argv[1];const registry=require(path.join(root,"gateway/registry"));if(!registry.adapters["lsc-tuya-light"])throw Error("LSC adapter missing");const tuya=require(path.join(root,"homekit/node_modules/tuyapi"));if(typeof tuya!=="function")throw Error("Tuya runtime missing")' $root
 if ($LASTEXITCODE -ne 0) { throw 'Packaged LSC/Tuya runtime check failed' }
+Write-Host 'Checking installed LSC worker.'
 & (Join-Path $root 'node.exe') (Join-Path $PSScriptRoot 'lsc-smoke.js') $root
 if ($LASTEXITCODE -ne 0) { throw 'Installed Windows Tuya worker exchange failed' }
+Write-Host 'Checking native Bluetooth worker.'
 $workerInfo = [Diagnostics.ProcessStartInfo]::new((Join-Path $root 'LanternDirect.exe'))
 $workerInfo.UseShellExecute = $false
 $workerInfo.CreateNoWindow = $true
@@ -39,6 +42,7 @@ try {
     if (-not $worker.HasExited) { $worker.Kill($true); $worker.WaitForExit() }
     $worker.Dispose()
 }
+Write-Host 'Checking gateway installation guard.'
 $leaseInfo = [Diagnostics.ProcessStartInfo]::new((Join-Path $root 'LanternDirect.exe'))
 $leaseInfo.UseShellExecute = $false
 $leaseInfo.CreateNoWindow = $true
@@ -61,6 +65,7 @@ $shortcut = Join-Path ([Environment]::GetFolderPath('Programs')) 'Lantern Bridge
 if (-not (Test-Path $shortcut)) { throw 'Missing Start menu shortcut' }
 $runValue = (Get-ItemProperty -Path $runKey -Name LanternDirectHomeKit).LanternDirectHomeKit
 if ($runValue -ne ('"' + (Join-Path $root 'LanternDirect.exe') + '" --homekit')) { throw 'Autostart path was not migrated' }
+Write-Host 'Checking desktop startup.'
 $app = Start-Process -FilePath (Join-Path $root 'LanternDirect.exe') -PassThru
 try {
     Start-Sleep -Seconds 5
@@ -82,6 +87,7 @@ Set-Content -Path $favoriteFile -Value '[]' -NoNewline
 Set-Content -Path $pairingFile -Value 'pairing storage preservation test' -NoNewline
 $gatewayFile = Join-Path $settings 'gateway\installer-test\preserve.txt'
 Set-Content -Path $gatewayFile -Value 'gateway storage preservation test' -NoNewline
+Write-Host 'Checking uninstall and private storage preservation.'
 $removed = Start-Process -FilePath (Join-Path $root 'Uninstall.exe') -ArgumentList '/S' -Wait -PassThru
 if ($removed.ExitCode -ne 0) { throw 'Uninstaller failed' }
 for ($i=0; $i -lt 40 -and (Test-Path (Join-Path $root 'LanternDirect.exe')); $i++) { Start-Sleep -Milliseconds 500 }

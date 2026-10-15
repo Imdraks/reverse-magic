@@ -12,6 +12,7 @@ async function main(){
     await adapter.read();await adapter.probe();assert.equal(fixture.writes.length,0);
     await adapter.apply({hue:120,saturation:100,brightness:35});assert.equal(fixture.dps[24],'007803e8015e');
     await adapter.apply({colorTemperature:250});assert.equal(fixture.dps[21],'white');
+    assert.equal(fixture.reusedNonces,0);
     fixture.silentAfterWrite=true;const bounded=new LscTuya(options,{timeout:2000});
     try{await assert.rejects(bounded.apply({on:false}));assert.equal(bounded.children.size,0);}finally{await bounded.close();}
   }finally{await adapter.close();await fixture.close();}

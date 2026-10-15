@@ -47,6 +47,7 @@ for(const version of ['3.1','3.3','3.4','3.5'])test(`LSC actual Tuya TCP ${versi
     fixture.rejectWrites=true;await assert.rejects(light.apply({on:true}));
     if(['3.4','3.5'].includes(version))assert.ok(fixture.sessions>=5,'session keys negotiated for each operation');
     if(version==='3.5'){
+      assert.equal(fixture.reusedNonces,0,'GCM IVs must not repeat with the same key, including handshake bursts');
       process.env.LANTERN_TEST_LSC_KEY='fedcba9876543210';
       const wrong=new LscTuya(options(fixture),{timeout:600});
       try{await assert.rejects(wrong.probe(),error=>!/(fedcba9876543210|0123456789abcdef|test_device)/.test(error.message));assert.equal(wrong.children.size,0);}
