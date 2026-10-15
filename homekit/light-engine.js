@@ -103,6 +103,7 @@ class LightEngine extends EventEmitter {
         await this.transport.apply(next);
         this.state = next;
         this.hasSavedState = true;
+        this.connectedBefore = true;
         try { await this.save({ ...next });this.persistenceError=false; } catch { this.persistenceError=true;this.emit('persistence-warning'); }
         if (this.closed) throw new BridgeUnavailable('Bridge stopped');
         this.availability(true);
