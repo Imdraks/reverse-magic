@@ -42,11 +42,27 @@ jobs:
           python-version: '3.11'
       - name: Test Linux transport and encrypted HomeKit on native architecture
         run: |
-          python -m venv .venv
-          .venv/bin/pip install -r linux/requirements.txt
-          npm ci --prefix homekit --ignore-scripts --no-audit --no-fund
-          PYTHONPATH=linux .venv/bin/python -m unittest discover -s linux/tests -v
-          npm test --prefix homekit
+          set -o pipefail
+          {
+            python -m venv .venv
+            .venv/bin/pip install -r linux/requirements.txt
+            npm ci --prefix homekit --ignore-scripts --no-audit --no-fund
+            PYTHONPATH=linux .venv/bin/python -m unittest discover -s linux/tests -v
+            npm test --prefix homekit
+          } 2>&1 | tee /tmp/lantern-tests.log
+      - name: Summarize failed test output in check annotations
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          path=Path('/tmp/lantern-tests.log')
+          if path.exists():
+              text='\n'.join(path.read_text().splitlines()[-90:])
+              text=re.sub(r'\b\d{3}-\d{2}-\d{3}\b','[redacted pairing code]',text)
+              text=text.replace('%','%25').replace('\r','%0D').replace('\n','%0A')
+              print('::warning title=Linux test failure::'+text)
+          PY
       - name: Build portable Linux bundle with verified Node runtime
         run: python scripts/package-linux.py --arch ${{ matrix.arch }} --output release/LanternDirect-Linux-${{ matrix.arch }}.tar.gz
       - name: Install and check the packaged command line
