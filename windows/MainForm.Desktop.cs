@@ -63,7 +63,8 @@ public sealed partial class MainForm
     private object DesktopState()
     {
         using var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run");
-        return new { platform="windows", connected=ble.IsReady, device=lastDevice is null?null:FormatAddress(lastDevice.Address), deviceName=lastDevice?.Name,
+        var (favorites,favoritesError)=favoriteStore.Snapshot();
+        return new { version="0.5.0",favorites,favoritesError,canSaveFavorite=desktopKnown&&!controllerMic&&favoritesError==null,connectionIssue=desktopIssue,connecting=desktopConnectCancel!=null,connectionAttempt=desktopAttempt,platform="windows", connected=ble.IsReady, device=lastDevice is null?null:FormatAddress(lastDevice.Address), deviceName=lastDevice?.Name,
             on=desktopOn, brightness=brightness.Value, rgb=$"{selectedColor.R:X2}{selectedColor.G:X2}{selectedColor.B:X2}",mic=controllerMic,
             bridge=homeKit!=null,pairingReady=pairingCode!=null,autostart=key?.GetValue("LanternDirectHomeKit") is string,
             devices=found.Values.Select(x=>new {address=FormatAddress(x.Address),name=x.Name,rssi=x.RSSI}).ToArray(),effects=catalog,
@@ -88,6 +89,7 @@ public sealed partial class MainForm
             var data=root.GetProperty("data");
             object result;
             if(action=="state")result=DesktopState();
+            else if(action=="cancel-connect"){desktopConnectCancel?.Cancel();result=new {};}
             else
             {
                 await desktopCommands.WaitAsync();
@@ -95,15 +97,15 @@ public sealed partial class MainForm
             }
             response=new {id,ok=true,result};
         }
-        catch(Exception error){response=new {id,ok=false,error=error is OperationCanceledException?"Connexion interrompue. Reconnectez vos LED.":error.Message};}
+        catch(Exception error){response=new {id,ok=false,error=error is OperationCanceledException?"Connexion annulée.":error.Message};}
         if(!IsDisposed&&desktopView?.CoreWebView2!=null)try{desktopView.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(response));}catch(InvalidOperationException){}
         PushDesktop();
     }
     private async Task<object> DesktopCommand(string action,JsonElement data)
     {
         if(action=="quit"){BeginInvoke(()=>{quitting=true;Close();});return new {};}
-        if(busy||reconnecting)throw new InvalidOperationException("Une connexion est déjà en cours. Patientez un instant.");
-        if(homeKit!=null&&action is not ("bridge-stop" or "pairing" or "autostart"))throw new InvalidOperationException("Maison pilote vos LED. Arrêtez le pont pour utiliser les commandes directes.");
+        if((busy||reconnecting)&&action is not ("bridge-stop" or "diagnose" or "check-updates" or "open-downloads" or "favorite-delete" or "autostart"))throw new InvalidOperationException("Une connexion est déjà en cours. Patientez un instant.");
+        if(homeKit!=null&&action is not ("bridge-stop" or "pairing" or "autostart" or "favorite-delete" or "diagnose" or "check-updates" or "open-downloads"))throw new InvalidOperationException("Maison pilote vos LED. Arrêtez le pont pour utiliser les commandes directes.");
         switch(action)
         {
             case "scan":
@@ -118,10 +120,24 @@ public sealed partial class MainForm
                 if(!System.Text.RegularExpressions.Regex.IsMatch(text,@"^(?:[0-9A-F]{2}:){5}[0-9A-F]{2}$"))throw new ArgumentException("Adresse Bluetooth invalide.");
                 var address=Convert.ToUInt64(text.Replace(":",""),16);
                 var selected=found.GetValueOrDefault(address)??(lastDevice?.Address==address?lastDevice:new FoundLED(address,"Contrôleur LED",0));
-                await Connect(selected);break;
-            case "disconnect":StopScan();ble.Disconnect();controllerMic=false;status.Text="Connexion fermée.";break;
+                await ConnectDesktop(selected);break;
+            case "disconnect":StopScan();ble.Disconnect();controllerMic=false;desktopIssue=null;status.Text="Connexion fermée.";break;
             case "bridge-start":await StartHomeKit();break;
             case "bridge-stop":StopHomeKit();break;
+            case "favorite-save":
+                if(!desktopKnown||controllerMic)throw new InvalidOperationException("Choisissez une couleur ou une animation avant de l’enregistrer.");
+                favoriteStore.Save(data.GetProperty("name").GetString()!,DesktopFavorite());break;
+            case "favorite-delete":favoriteStore.Delete(data.GetProperty("id").GetString()!);break;
+            case "favorite-apply":
+                if(!ble.IsReady)throw new InvalidOperationException("Connectez vos LED dans Appareils.");
+                var favorite=favoriteStore.Get(data.GetProperty("id").GetString()!);
+                foreach(var frame in favorite.Frames())await ble.SendAsync(frame);
+                desktopMode=favorite.mode;desktopEffect=favorite.effect;desktopScene=favorite.scene;desktopSpeed=favorite.speed;
+                selectedColor=Color.FromArgb(Convert.ToInt32(favorite.rgb[..2],16),Convert.ToInt32(favorite.rgb[2..4],16),Convert.ToInt32(favorite.rgb[4..],16));
+                brightness.Value=favorite.brightness;desktopOn=true;controllerMic=false;desktopKnown=true;status.Text="Votre favori est appliqué.";break;
+            case "diagnose":return new {checks=await DesktopDiagnostics()};
+            case "check-updates":return await DesktopUpdates();
+            case "open-downloads":System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://github.com/Imdraks/reverse-magic/releases"){UseShellExecute=true});return new {};
             case "pairing":
                 if(pairingCode==null||pairingQR==null)throw new InvalidOperationException("Le code est en cours de préparation.");
                 return new {code=pairingCode,image="data:image/png;base64,"+Convert.ToBase64String(File.ReadAllBytes(pairingQR))};
@@ -139,14 +155,14 @@ public sealed partial class MainForm
                         var rgb=data.GetProperty("rgb").GetString()!;
                         if(!System.Text.RegularExpressions.Regex.IsMatch(rgb,@"^[0-9A-Fa-f]{6}$"))throw new ArgumentException("Couleur invalide.");
                         var color=Color.FromArgb(Convert.ToInt32(rgb[..2],16),Convert.ToInt32(rgb[2..4],16),Convert.ToInt32(rgb[4..],16));
-                        await StopMusic();await ble.SendAsync(LedProtocol.Color(color.R,color.G,color.B));await ble.SendAsync(LedProtocol.Brightness(brightness.Value));await ble.SendAsync(LedProtocol.Power(true));selectedColor=color;desktopOn=true;break;
+                        await StopMusic();await ble.SendAsync(LedProtocol.Color(color.R,color.G,color.B));await ble.SendAsync(LedProtocol.Brightness(brightness.Value));await ble.SendAsync(LedProtocol.Power(true));selectedColor=color;desktopOn=true;desktopMode="color";desktopKnown=true;break;
                     case "brightness":var level=data.GetProperty("value").GetInt32();await ble.SendAsync(LedProtocol.Brightness(level));brightness.Value=level;break;
-                    case "speed":await ble.SendAsync(LedProtocol.Speed(data.GetProperty("value").GetInt32()));break;
+                    case "speed":var pace=data.GetProperty("value").GetInt32();await ble.SendAsync(LedProtocol.Speed(pace));desktopSpeed=pace;break;
                     case "sensitivity":await ble.SendAsync(LedProtocol.Sensitivity(data.GetProperty("value").GetInt32()));break;
                     case "effect":
                         var code=data.GetProperty("id").GetInt32();var scene=data.GetProperty("scene").GetBoolean();
                         var frame=scene?LedProtocol.Scene(code):LedProtocol.Effect(code);var tempo=LedProtocol.Speed(data.GetProperty("speed").GetInt32());
-                        await StopMusic();await ble.SendAsync(frame);await ble.SendAsync(tempo);await ble.SendAsync(LedProtocol.Power(true));desktopOn=true;break;
+                        await StopMusic();await ble.SendAsync(frame);await ble.SendAsync(tempo);await ble.SendAsync(LedProtocol.Power(true));desktopOn=true;desktopMode="effect";desktopEffect=code;desktopScene=scene;desktopSpeed=data.GetProperty("speed").GetInt32();desktopKnown=true;break;
                     case "mic":
                         var enabled=data.GetProperty("on").GetBoolean();
                         var frames=enabled?new[]{LedProtocol.Microphone(true),LedProtocol.MicEffect(data.GetProperty("effect").GetInt32()),LedProtocol.Sensitivity(data.GetProperty("sensitivity").GetInt32()),LedProtocol.Power(true)}:new[]{LedProtocol.Microphone(false)};

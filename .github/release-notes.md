@@ -1,16 +1,11 @@
-Une nouvelle interface commune à **Windows et Linux/Raspberry Pi**, inspirée des applications Apple : fond doux, cartes arrondies, palette pastel, hiérarchie simple et modes clair/sombre.
+Cette version améliore les favoris, les connexions et l’installation sur Windows et Linux/Raspberry Pi.
 
-- Tableau de bord avec lumière principale, bouton d’allumage, luminosité et palette de couleurs.
-- Ambiances de couleurs prêtes à appliquer ; animations et musique du contrôleur dans leur propre section.
-- Espace Maison pour activer/arrêter le pont, afficher le QR et le code d’appairage.
-- Recherche et connexion des appareils Bluetooth, avec état et messages de connexion.
-- Le mode musical et son indicateur sont arrêtés lors du passage à Maison.
-- Commandes directes désactivées quand Maison pilote les LED ; retour au contrôle manuel après arrêt du pont.
+- **Favoris personnels** : mémoriser une couleur ou une animation avec luminosité et vitesse, puis l’appliquer en un clic. Jusqu’à 32 favoris ; mise à jour par le même nom et suppression. Stockage local et conservation lors des mises à jour.
+- **Connexions plus claires** : deux tentatives limitées pour les erreurs transitoires, bouton Annuler, messages adaptés et diagnostic de la radio/adaptateur. Une autre application connectée reste une possibilité, sans détection certaine. Aucun réglage n’est rejoué après une simple reconnexion manuelle.
+- **Windows : `LanternDirect-Setup.exe`** installe le programme et le pont Maison pour votre compte, sans droits administrateur, avec raccourcis et désinstallation. Quitter Lantern avant installation ou mise à jour. La désinstallation conserve favoris, réglages et appairages Maison. Le ZIP portable est toujours proposé. WebView2 Runtime reste nécessaire pour l’interface moderne.
+- **Linux/Raspberry Pi : `./install.sh --desktop`** ajoute le raccourci au menu des applications ; `./lantern desktop-install` l’ajoute à une installation existante. Le terminal et le service sans écran restent disponibles.
+- **Versions** : vérification sur GitHub uniquement à votre demande, versions de test incluses ; aucun remplacement automatique des fichiers.
 
-**Windows** : ouvrir `LanternDirect.exe`, ou le programme dans `LanternDirect-Windows-HomeKit.zip` pour Maison. La nouvelle fenêtre utilise Microsoft Edge WebView2 Runtime, généralement installé sur Windows 11. Si ce runtime manque, les commandes classiques restent accessibles. Le runtime est disponible chez Microsoft ; il n’est pas inclus dans le paquet.
+Le design clair/sombre, la correction rouge/vert GRB et le pont Maison sont conservés. Le PC/Pi doit rester allumé à portée Bluetooth. L’IPA iOS est inchangé.
 
-**Linux / Raspberry Pi OS 64 bits** : télécharger l’archive ARM64 ou x64, installer comme indiqué dans [le guide](https://github.com/Imdraks/reverse-magic/blob/main/linux/README.md), puis lancer **`./lantern gui`**. L’interface s’ouvre dans le navigateur de l’appareil, avec accès uniquement local et commandes authentifiées. Un bureau/navigateur est nécessaire pour le GUI ; le terminal, le pont sans écran et le service systemd restent disponibles. Arrêter le service avant de connecter ses LED dans le GUI.
-
-Le pont Maison, les identités d’appairage et la correction rouge/vert GRB sont conservés. Le PC/Pi doit rester allumé et à portée Bluetooth. L’IPA iOS 1.0.1 est inchangé et reste non signé.
-
-Aperçus clair et sombre joints à la release, avec un contrôleur simulé. Tests Chromium : connexion, commandes jusqu’aux trames GRB, luminosité, Maison, QR, retour au contrôle manuel, écran étroit et accès HTTP refusé sans session/depuis une autre origine. Tests Linux et HomeKit chiffré, validation native ARM64/x64 et compilation Windows. Le rendu WebView2 Windows et l’essai radio réel avec vos appareils restent à confirmer.
+Validation : tests de persistance/intégrité des favoris, trames GRB et animations, annulation de connexion et refus sans répétition en cas de permissions manquantes ; parcours GUI Chromium et HomeKit chiffré ; paquets Linux testés sur ARM64/x64. L’installation, le lancement du programme et la désinstallation sont testés sur un runner Windows, avec vérification des raccourcis, de la migration du démarrage automatique et de la conservation des données utilisateur. La radio réelle reste à confirmer sur vos appareils.

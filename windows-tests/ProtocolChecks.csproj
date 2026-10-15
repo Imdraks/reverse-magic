@@ -5,5 +5,5 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-  <ItemGroup><Compile Include="../windows/LedProtocol.cs" Link="LedProtocol.cs" /><Compile Include="../windows/HomeKitLightState.cs" Link="HomeKitLightState.cs" /></ItemGroup>
+  <ItemGroup><Compile Include="../windows/LedProtocol.cs" Link="LedProtocol.cs" /><Compile Include="../windows/HomeKitLightState.cs" Link="HomeKitLightState.cs" /><Compile Include="../windows/Favorites.cs" Link="Favorites.cs" /></ItemGroup>
 </Project>

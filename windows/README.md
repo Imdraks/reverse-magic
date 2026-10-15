@@ -47,3 +47,13 @@ La fenêtre embarque la même interface que Linux : vue d’ensemble, couleurs, 
 L’affichage moderne nécessite **Microsoft Edge WebView2 Runtime**, généralement déjà présent sur Windows 11. S’il manque, le programme conserve les commandes classiques et vous invite à l’installer depuis [Microsoft](https://developer.microsoft.com/microsoft-edge/webview2/). Le runtime WebView2 n’est pas inclus dans le paquet. Le pont Maison nécessite toujours le ZIP Windows complet.
 
 Le rendu partagé a été testé dans Chromium et la compilation Windows x64 est vérifiée. Le fonctionnement de la fenêtre WebView2 et du Bluetooth reste à confirmer sur votre PC Windows.
+
+## Installation et favoris v0.5.0
+
+`LanternDirect-Setup.exe` installe le programme, Node et le pont Maison dans `%LOCALAPPDATA%/Programs/LanternDirect`, sans droits administrateur. L’assistant crée un raccourci du menu Démarrer, propose celui du Bureau et enregistre la désinstallation dans les applications Windows. Quitter Lantern depuis la zone de notification avant installation, mise à jour ou désinstallation. Le chemin du démarrage automatique est mis à jour si cette option était déjà active. WebView2 Runtime reste un prérequis séparé.
+
+La désinstallation retire le programme et ses raccourcis, mais conserve `%LOCALAPPDATA%/LanternDirect` : favoris, dernier contrôleur et clés Maison. Le ZIP portable reste disponible.
+
+Les favoris mémorisent une couleur ou une animation avec luminosité et vitesse (jusqu’à 32). Enregistrer depuis la vue d’ensemble ; le même nom remplace un favori et son application allume la lumière. Les données restent dans `favorites.json` dans le profil utilisateur ; un fichier illisible n’est pas écrasé. Le mode musical ne peut pas être mémorisé.
+
+Le GUI propose deux tentatives de connexion, annulables, pour les erreurs transitoires. Une reconnexion seule ne rejoue pas les réglages. Le diagnostic inspecte adaptateur, support BLE et radio ; une autre application connectée ne peut pas être confirmée. La vérification des versions consulte GitHub uniquement sur demande et inclut les releases de test ; le téléchargement reste manuel.

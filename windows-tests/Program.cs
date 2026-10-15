@@ -52,4 +52,20 @@ foreach (var state in new[] { new HomeKitLightState(true, -1, 0, 0), new HomeKit
     try { state.Frames(); throw new Exception("Invalid HomeKit state accepted"); }
     catch (ArgumentException) { count++; }
 }
+var directory=Path.Combine(Path.GetTempPath(),"lantern-favorites-"+Guid.NewGuid().ToString("N"));
+try
+{
+    var file=Path.Combine(directory,"favorites.json");var favorites=new Favorites(file);
+    favorites.Save("Soir",new Favorite("","","color","FF0000",42,0,false,50));
+    var restored=new Favorites(file).Load().Single();
+    Check(restored.Frames()[1],"7E 07 05 03 00 FF 00 10 EF");
+    Check(restored.Frames()[2],"7E 04 01 2A FF FF FF 00 EF");
+    favorites.Save("SOIR",restored with {brightness=12});
+    if(favorites.Load().Count!=1||favorites.Load()[0].id!=restored.id||favorites.Load()[0].brightness!=12)throw new Exception("Favorite update lost its identity");count++;
+    favorites.Delete(restored.id);if(favorites.Load().Count!=0)throw new Exception("Favorite deletion failed");count++;
+    File.WriteAllText(file,"invalid user data");
+    try{favorites.Save("New",restored);throw new Exception("Corrupt data overwritten");}catch(System.Text.Json.JsonException){}
+    if(File.ReadAllText(file)!="invalid user data")throw new Exception("Corrupt user file changed");count++;
+}
+finally{if(Directory.Exists(directory))Directory.Delete(directory,true);}
 Console.WriteLine($"{count} protocol checks passed; 0 failures.");

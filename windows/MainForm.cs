@@ -135,16 +135,18 @@ public sealed partial class MainForm : Form
         {
             ble.Disconnect(); controllerMic = false; controls.Enabled = false;
             status.Text = message;
+            if (homeKit == null && desktopConnectCancel == null) desktopIssue = ConnectionIssue.From(new IOException(message));
         });
         scanTimer.Tick += (_, _) => { StopScan(); status.Text = found.Count == 0 ? "Aucune LED trouvée. Rapprochez-vous et fermez l’app Android." : "Choisissez votre contrôleur."; };
         FormClosed += (_, _) => { StopHomeKit(); scanTimer.Dispose(); ble.Dispose(); };
         InitializeDesktop(page);
     }
 
-    private async Task Connect(FoundLED selected)
+    private async Task Connect(FoundLED selected, CancellationToken cancellationToken = default)
     {
         StopScan(); status.Text = $"Connexion à {selected.Name}…";
-        await ble.ConnectAsync(selected.Address);
+        await ble.ConnectAsync(selected.Address, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
         lastDevice = selected;
         // Failure to save a convenience preference must not invalidate a live connection.
         try { Directory.CreateDirectory(Path.GetDirectoryName(preferencesPath)!); File.WriteAllText(preferencesPath, JsonSerializer.Serialize(selected)); } catch { }

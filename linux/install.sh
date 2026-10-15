@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+LANTERN_DESKTOP=0
+if [[ ${1:-} == --desktop ]]; then LANTERN_DESKTOP=1; elif [[ $# -gt 0 ]]; then echo "Usage : ./install.sh [--desktop]" >&2; exit 1; fi
 LANTERN_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 if [[ ! -f "$LANTERN_ROOT/linux/lantern.py" ]]; then LANTERN_ROOT=$(cd -- "$LANTERN_ROOT/.." && pwd); fi
 cd "$LANTERN_ROOT"
@@ -16,4 +18,5 @@ fi
 "$LANTERN_NODE" -e 'if (![22,24].includes(Number(process.versions.node.split(".")[0]))) throw new Error("Node 22/24 requis"); require("./homekit/node_modules/hap-nodejs"); require("./homekit/node_modules/qrcode")'
 chmod +x lantern
 ./lantern --help
+if [[ $LANTERN_DESKTOP -eq 1 ]]; then ./lantern desktop-install; fi
 printf '\nInstallation terminée. Lancez ./lantern scan\n'

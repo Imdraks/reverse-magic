@@ -12,7 +12,8 @@ public sealed record FoundLED(ulong Address, string Name, int RSSI)
 
 public sealed class BleController : IDisposable
 {
-    private readonly BluetoothLEAdvertisementWatcher watcher = new() { ScanningMode = BluetoothLEScanningMode.Active };
+    private readonly BluetoothLEAdvertisementWatcher? watcher;
+    private readonly Exception? watcherInitializationError;
     private readonly SemaphoreSlim writerLock = new(1, 1);
     private BluetoothLEDevice? device;
     private GattDeviceService? service;
@@ -25,6 +26,9 @@ public sealed class BleController : IDisposable
 
     public BleController()
     {
+        try
+        {
+        watcher = new() { ScanningMode = BluetoothLEScanningMode.Active };
         watcher.Received += (_, e) =>
         {
             var name = e.Advertisement.LocalName;
@@ -35,17 +39,19 @@ public sealed class BleController : IDisposable
         {
             if (e.Error != BluetoothError.Success) Disconnected?.Invoke($"Recherche arrêtée : {e.Error}");
         };
+        }
+        catch(Exception error) { watcherInitializationError = error; }
     }
 
-    public void Scan(bool includeAll) { showAll = includeAll; watcher.Start(); }
-    public void StopScan() => watcher.Stop();
+    public void Scan(bool includeAll) { showAll = includeAll; if(watcher==null)throw new InvalidOperationException("Bluetooth LE indisponible sur cet ordinateur. Vérifiez l’adaptateur et les pilotes Windows.",watcherInitializationError); watcher.Start(); }
+    public void StopScan() { try { watcher?.Stop(); } catch { /* Stopping a missing radio must not prevent exit. */ } }
 
-    public async Task ConnectAsync(ulong address)
+    public async Task ConnectAsync(ulong address, CancellationToken cancellationToken = default)
     {
         StopScan();
         Disconnect();
         connection = new();
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(connection.Token);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(connection.Token, cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(20));
         try
         {

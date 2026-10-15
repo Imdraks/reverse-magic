@@ -38,6 +38,17 @@ test('desktop UI: authenticated API, devices, GRB colour, Maison pairing and ada
     const frames=await api('test-frames');assert.ok(frames.includes('7e07050376ff5e10ef'),'GUI colour must use GRB');
     await page.locator('#brightness').fill('42');await page.locator('#brightness').dispatchEvent('change');
     await page.waitForFunction(()=>document.getElementById('brightness-value').textContent==='42%');
+    await page.getByRole('button',{name:'Enregistrer ce réglage',exact:true}).click();
+    await page.locator('#favorite-name').fill('Soir tranquille');
+    await page.getByRole('button',{name:'Enregistrer le favori',exact:true}).click();
+    await page.locator('#favorite-dialog').waitFor({state:'hidden'});
+    const saved=(await api('state')).favorites[0];assert.equal(saved.brightness,42);assert.equal(saved.rgb,'FF765E');
+    await page.getByRole('button',{name:'Bleu ciel',exact:true}).click();
+    await page.waitForFunction(()=>document.getElementById('custom-color').value==='#7faef5');
+    await page.getByRole('button',{name:'Appliquer Soir tranquille',exact:true}).click();
+    await page.waitForFunction(()=>document.getElementById('custom-color').value==='#ff765e');
+    await page.reload();await page.getByRole('button',{name:'Appliquer Soir tranquille',exact:true}).waitFor();
+    assert.equal((await api('state')).favorites[0].id,saved.id);
     await page.getByRole('button',{name:'Ambiances',exact:true}).click();
     await page.locator('#mic').click();
     await page.waitForFunction(()=>document.getElementById('mic').getAttribute('aria-checked')==='true');

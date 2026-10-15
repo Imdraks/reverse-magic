@@ -73,6 +73,10 @@ WantedBy=multi-user.target
 '''
 
 async def run(args):
+    if args.command == 'desktop-install':
+        from desktop_tools import install_shortcut
+        print('Raccourci installé :',install_shortcut(ROOT))
+        return
     if args.command == 'gui':
         from gui import run_gui
         await run_gui(args)
@@ -135,10 +139,10 @@ async def run(args):
 def parser():
     result = argparse.ArgumentParser(description='Lantern Direct — Linux et Raspberry Pi, terminal / Maison')
     commands = result.add_subparsers(dest='command', required=True)
-    for name in ['scan', 'gui', 'bridge', 'pairing', 'service', 'on', 'off', 'color', 'brightness', 'effect', 'mic']:
+    for name in ['scan', 'desktop-install', 'gui', 'bridge', 'pairing', 'service', 'on', 'off', 'color', 'brightness', 'effect', 'mic']:
         cmd = commands.add_parser(name)
         cmd.add_argument('--adapter', help='Adaptateur BlueZ, par exemple hci0')
-        if name != 'scan':
+        if name not in ('scan','desktop-install'):
             cmd.add_argument('--device', type=address, required=name != 'gui')
             cmd.add_argument('--data-dir', type=Path, help='Racine du stockage persistant (identité et appairages)')
         if name == 'scan':

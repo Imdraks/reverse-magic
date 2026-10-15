@@ -59,6 +59,7 @@ public sealed partial class MainForm
                 case "status": homeStatus.Text = message.GetProperty("connected").GetBoolean() ? "Maison : LED connectées." : "Maison : LED indisponibles, reconnexion automatique…"; break;
                 case "light":
                     var light = message.GetProperty("state");
+                    desktopKnown = true; desktopMode = "color";
                     desktopOn = light.GetProperty("on").GetBoolean();
                     brightness.Value = light.GetProperty("brightness").GetInt32();
                     var snapshot = new HomeKitLightState(true, brightness.Value, light.GetProperty("hue").GetDouble(), light.GetProperty("saturation").GetDouble()).Frames()[1];

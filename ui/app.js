@@ -19,15 +19,16 @@ if(!webview){
   if(token){sessionStorage.setItem('lantern-session',token);history.replaceState(null,'',location.pathname);}
 }
 async function rpc(action,data={}){
+  const timeout=action==='connect'?65000:40000;
   if(webview)return new Promise((resolve,reject)=>{
     const id=++sequence;
-    const timer=setTimeout(()=>{requests.delete(id);reject(new Error('Le contrôleur ne répond pas. Réessayez après reconnexion.'));},40000);
+    const timer=setTimeout(()=>{requests.delete(id);reject(new Error('Le contrôleur ne répond pas. Réessayez après reconnexion.'));},timeout);
     requests.set(id,{resolve,reject,timer});webview.postMessage({id,action,data});
   });
-  const response=await fetch('/api/'+action,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(data),signal:AbortSignal.timeout(40000)});
+  const response=await fetch('/api/'+action,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(data),signal:AbortSignal.timeout(timeout)});
   const result=await response.json();if(!response.ok||!result.ok)throw new Error(result.error||'Opération impossible.');return result.result;
 }
-let state={connected:false,bridge:false,on:false,brightness:100,rgb:'FFB340',mic:false,devices:[],effects:[],platform:'linux'},pending=false,toastTimer,activePage='overview',effectSignature='';
+let state={connected:false,bridge:false,on:false,brightness:100,rgb:'FFB340',mic:false,devices:[],effects:[],platform:'linux'},pending=false,busyAction='',toastTimer,activePage='overview',effectSignature='';
 const titles={overview:['Vue d’ensemble','La lumière, simplement.','Un peu de couleur. Une autre atmosphère.'],ambience:['Ambiances','À chaque instant, sa couleur.','Choisissez une teinte. Laissez le reste s’effacer.'],home:['Maison','Tout naturellement, ensemble.','Votre lumière trouve sa place dans Maison.'],devices:['Appareils','Le début d’une belle connexion.','Retrouvez vos LED et rapprochez les choses.']};
 function openPage(page){
   activePage=page;document.querySelectorAll('.page').forEach(el=>el.classList.toggle('active',el.id==='page-'+page));
@@ -39,10 +40,10 @@ document.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openPage(el.
 $('connection-pill').onclick=()=>openPage('devices');
 function toast(message){clearTimeout(toastTimer);$('toast').textContent=message;$('toast').hidden=false;toastTimer=setTimeout(()=>$('toast').hidden=true,5500);}
 async function act(action,data={},success){
-  if(pending)return;pending=true;document.body.classList.add('pending');render(state);
+  if(pending)return;pending=true;busyAction=action;document.body.classList.add('pending');render(state);
   try{const result=await rpc(action,data);if(result?.state)render(result.state);else await refresh();if(success)toast(success);return result;}
   catch(error){toast(error.message);return null;}
-  finally{pending=false;document.body.classList.remove('pending');render(state);}
+  finally{pending=false;busyAction='';document.body.classList.remove('pending');render(state);}
 }
 function range(id,value){const el=$(id);if(!el.matches(':active')&&!pending)el.value=value;el.style.setProperty('--fill',el.value+'%');}
 function render(next){
@@ -64,13 +65,19 @@ function render(next){
   $('mode-notice').hidden=!state.bridge;$('home-dot').classList.toggle('on',state.bridge);
   $('home-status').textContent=state.bridge?(state.connected?'Pont actif · LED connectées':'Pont actif · Reconnexion…'):'Pont désactivé';$('home-status').classList.toggle('on',state.bridge&&state.connected);
   $('bridge-toggle').textContent=state.bridge?'Arrêter le pont':'Activer le pont';$('bridge-toggle').disabled=pending||(!state.device&&!state.bridge);
-  $('pairing').disabled=pending||!state.pairingReady;$('scan').disabled=pending||state.bridge;$('scan').classList.toggle('busy-spin',pending&&activePage==='devices');
+  $('pairing').disabled=pending||!state.pairingReady;$('scan').disabled=pending||state.bridge;$('scan').classList.toggle('busy-spin',pending&&busyAction==='scan');
   $('reconnect').disabled=pending||state.bridge||!state.device;$('disconnect').disabled=pending||state.bridge||!state.connected;
   $('autostart-row').hidden=state.platform!=='windows';$('linux-service').hidden=state.platform==='windows';$('autostart').checked=Boolean(state.autostart);$('autostart').disabled=pending;
   $('home-explanation').textContent=state.platform==='windows'?'Fermer la fenêtre laisse le pont actif près de l’horloge. Gardez votre PC allumé, sans veille.':'Gardez ce Raspberry Pi ou PC Linux allumé et à portée des LED. Le mode service fonctionne aussi sans interface graphique.';
   $('service-command').textContent=`./lantern service --device ${state.device||'ADRESSE_LED'} --install`;
   $('device-detail').textContent=state.device?`${state.deviceName||'Contrôleur LED'} · ${state.device}`:'Aucun contrôleur sélectionné.';
   $('status-text').textContent=state.status||'Un éclairage personnel. Sans compte, sans cloud.';
+  renderFavorites();
+  $('connection-progress').hidden=!state.connecting;$('connection-attempt').textContent=`Tentative ${state.connectionAttempt||1} sur 2. Aucun réglage lumineux n’est réappliqué.`;
+  $('connection-issue').hidden=!state.connectionIssue;
+  if(state.connectionIssue){$('issue-title').textContent=state.connectionIssue.title;$('issue-message').textContent=state.connectionIssue.message;}
+  $('favorite-save').disabled=pending||!state.connected||state.bridge||!state.canSaveFavorite;
+  $('diagnose').disabled=pending;$('check-updates').disabled=pending;
   const signature=JSON.stringify([state.devices,state.connected,state.device,pending,state.bridge]);
   if($('device-list').dataset.signature!==signature){$('device-list').dataset.signature=signature;renderDevices();}
   const effects=state.effects||[];
@@ -81,6 +88,28 @@ function renderDevices(){
   const devices=state.devices||[];if(!devices.length){$('device-list').replaceChildren(emptyDeviceList.cloneNode(true));return;}
   $('device-list').replaceChildren();for(const device of devices){const row=document.createElement('div');row.className='device-row';const tile=document.createElement('span');tile.className='icon-tile blue';tile.innerHTML=icon('bluetooth');const text=document.createElement('div');const name=document.createElement('strong');name.textContent=device.name;const detail=document.createElement('small');detail.textContent=device.address+(device.rssi?' · '+device.rssi+' dBm':'');text.append(name,detail);const button=document.createElement('button');button.className='secondary';button.textContent=state.connected&&state.device===device.address?'Connecté':'Connecter';button.disabled=pending||state.bridge||(state.connected&&state.device===device.address);button.onclick=()=>act('connect',{address:device.address,name:device.name},'Votre lumière est connectée.');row.append(tile,text,button);$('device-list').append(row);}
 }
+let favoriteSignature='';
+function renderFavorites(){
+  const signature=JSON.stringify([state.favorites,state.connected,state.bridge,pending,state.favoritesError]);
+  if(signature===favoriteSignature)return;favoriteSignature=signature;
+  $('favorites-list').replaceChildren();
+  $('favorites-note').textContent=state.favoritesError||((state.favorites||[]).length?'Un clic pour retrouver votre ambiance.':'Choisissez une couleur ou une animation pour créer votre premier favori.');
+  for(const favorite of state.favorites||[]){
+    const row=document.createElement('div');row.className='favorite-card';
+    const apply=document.createElement('button');apply.className='favorite-apply';apply.setAttribute('aria-label','Appliquer '+favorite.name);apply.disabled=pending||!state.connected||state.bridge;
+    const dot=document.createElement('span');dot.className='favorite-dot';dot.style.backgroundColor='#'+favorite.rgb;
+    const text=document.createElement('span');const title=document.createElement('strong');title.textContent=favorite.name;const caption=document.createElement('small');caption.textContent=(favorite.mode==='effect'?'Animation':'Couleur')+' · '+favorite.brightness+' %';text.append(title,caption);apply.append(dot,text);apply.onclick=()=>act('favorite-apply',{id:favorite.id},favorite.name+' — votre ambiance est prête.');
+    const remove=document.createElement('button');remove.className='icon-button';remove.setAttribute('aria-label','Supprimer '+favorite.name);remove.innerHTML=icon('close');remove.disabled=pending;remove.onclick=()=>{if(confirm('Supprimer le favori « '+favorite.name+' » ?'))act('favorite-delete',{id:favorite.id});};
+    row.append(apply,remove);$('favorites-list').append(row);
+  }
+}
+$('favorite-save').onclick=()=>{$('favorite-name').value='';$('favorite-dialog').showModal();$('favorite-name').focus();};
+$('close-favorite').onclick=()=>$('favorite-dialog').close();
+$('favorite-form').onsubmit=async event=>{event.preventDefault();$('confirm-favorite').disabled=true;const result=await act('favorite-save',{name:$('favorite-name').value});$('confirm-favorite').disabled=false;if(result){$('favorite-dialog').close();toast('Favori enregistré.');}};
+$('cancel-connect').onclick=async()=>{try{await rpc('cancel-connect');}catch(error){toast(error.message);}};
+$('diagnose').onclick=async()=>{const result=await act('diagnose');if(!result)return;$('diagnostics-list').replaceChildren();for(const check of result.checks){const row=document.createElement('p');const label=document.createElement('strong');label.textContent=(check.ok===true?'✓ ':check.ok===false?'! ':'• ')+check.label;const message=document.createElement('span');message.textContent=check.message;row.append(label,message);$('diagnostics-list').append(row);}};
+$('check-updates').onclick=async()=>{const result=await act('check-updates');if(result)$('update-status').textContent=result.available?`La version ${result.latest} est disponible. Votre version : ${result.current}.`:`Vous utilisez la version ${result.current}. Aucune version plus récente publiée.`;};
+$('open-downloads').onclick=()=>act('open-downloads');
 const swatches=[['FFB340','Ambre doux'],['FF765E','Corail'],['F4A7BE','Rose poudré'],['C6A3EF','Lavande'],['7FAEF5','Bleu ciel'],['7DC8AC','Sauge'],['F3DCA5','Blanc chaud'],['FFFFFF','Blanc pur']];
 for(const [rgb,name] of swatches){const button=document.createElement('button');button.className='swatch manual';button.style.backgroundColor='#'+rgb;button.dataset.rgb=rgb;button.setAttribute('aria-label',name);button.title=name;button.onclick=()=>act('color',{rgb});$('swatches').append(button);}
 const ambiences=[{name:'Heure dorée',sub:'La douceur de la fin du jour',rgb:'FFB340',class:'sunset',icon:'sun'},{name:'Grand bleu',sub:'Un souffle de calme',rgb:'7FAEF5',class:'ocean',icon:'moon'},{name:'Un peu de rose',sub:'Une note délicate',rgb:'F4A7BE',class:'rose',icon:'spark'},{name:'Parenthèse verte',sub:'La nature s’invite',rgb:'7DC8AC',class:'forest',icon:'palette'},{name:'Matin tranquille',sub:'Un blanc doux et chaleureux',rgb:'F3DCA5',class:'daylight',icon:'sun'},{name:'Après la pluie',sub:'Une touche de lavande',rgb:'C6A3EF',class:'lavender',icon:'moon'}];

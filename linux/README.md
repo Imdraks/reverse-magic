@@ -134,3 +134,19 @@ LANTERN_CHROMIUM="$(command -v chromium || command -v google-chrome)" npm test -
 ```
 
 Le navigateur des tests commande une radio simulée derrière le véritable serveur local. Les captures sont générées hors du dépôt sous `../outputs/interface/`.
+
+## Favoris, connexion et installation simplifiée
+
+Dans la vue d’ensemble, choisir une couleur ou une animation puis **Enregistrer ce réglage**. Les favoris conservent couleur/animation, luminosité et vitesse. Un même nom remplace le favori existant ; un favori appliqué allume les LED. Jusqu’à 32 favoris sont stockés par utilisateur dans la racine de données du GUI, sous `favorites.json`. Le mode musical ne peut pas être enregistré. Le fichier est remplacé atomiquement ; un fichier illisible reste conservé et n’est pas écrasé.
+
+Les connexions du GUI sont limitées à deux tentatives pour les erreurs transitoires. **Annuler** interrompt les tentatives. Aucun réglage lumineux n’est envoyé lors d’une simple reconnexion. Dans Appareils, **Vérifier la connexion** inspecte BlueZ et la radio ; une autre app connectée ne peut pas être identifiée avec certitude. Le pont Maison conserve sa reconnexion automatique et sa restauration des consignes.
+
+Pour installer aussi le raccourci du menu des applications :
+
+```bash
+./install.sh --desktop
+```
+
+Pour ajouter le raccourci à une installation existante : `./lantern desktop-install`. Conserver le dossier du programme à son emplacement ; après un déplacement, recréer le raccourci. Pour le retirer, supprimer `~/.local/share/applications/lantern-direct.desktop` (ou son équivalent sous `$XDG_DATA_HOME`). Le raccourci ouvre le même GUI local. Il ne modifie pas le service systemd.
+
+La vérification des nouvelles versions se lance explicitement dans Appareils et consulte les releases publiques GitHub, versions de test incluses. Aucun téléchargement ou remplacement automatique. Le bouton Téléchargements ouvre la page des releases ; une connexion Internet est nécessaire pour ces deux actions.

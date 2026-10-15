@@ -6,7 +6,7 @@ on:
       release_tag:
         description: Release version tag
         required: true
-        default: v0.4.1
+        default: v0.5.0
         type: string
       ios_run_id:
         description: Successful iOS build run for the same app sources
@@ -105,7 +105,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  release:
+  package:
     needs: [linux, interface]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -150,6 +150,12 @@ jobs:
           name: LanternDirect-interface
           path: release/interface
 
+      - name: Build per-user Windows installer
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y nsis
+          python3 scripts/package-installer.py --bundle release/LanternDirect-Windows-HomeKit.zip --output release/LanternDirect-Setup.exe
+
       - name: Fetch the validated iOS build
         run: |
           mkdir -p release
@@ -184,11 +190,70 @@ jobs:
           cp release/interface/lantern-light.png release/LanternDirect-interface-claire.png
           cp release/interface/lantern-dark.png release/LanternDirect-interface-sombre.png
           git archive --format=zip HEAD ios .github/workflows/ios-build.yml > release/LanternDirect-iOS-sources.zip
-          git archive --format=zip HEAD windows windows-tests homekit ui scripts/package-homekit.py MAISON-WINDOWS.txt ios/PROTOCOL.md > release/LanternDirect-Windows-sources.zip
+          git archive --format=zip HEAD windows windows-tests homekit ui installer scripts/package-installer.py scripts/package-homekit.py MAISON-WINDOWS.txt ios/PROTOCOL.md > release/LanternDirect-Windows-sources.zip
           git archive --format=zip HEAD lantern linux homekit ui windows/effects.json scripts/package-linux.py ios/PROTOCOL.md > release/LanternDirect-Linux-sources.zip
           cd release
-          sha256sum LanternDirect-interface-claire.png LanternDirect-interface-sombre.png LanternDirect-Linux-arm64.tar.gz LanternDirect-Linux-x64.tar.gz LanternDirect-Linux-sources.zip LanternDirect-Windows-HomeKit.zip LanternDirect-unsigned.ipa LanternDirect.exe LanternDirect-iOS-sources.zip LanternDirect-Windows-sources.zip INSTALLER-SUR-IPHONE.txt > SHA256SUMS.txt
+          sha256sum LanternDirect-Setup.exe LanternDirect-interface-claire.png LanternDirect-interface-sombre.png LanternDirect-Linux-arm64.tar.gz LanternDirect-Linux-x64.tar.gz LanternDirect-Linux-sources.zip LanternDirect-Windows-HomeKit.zip LanternDirect-unsigned.ipa LanternDirect.exe LanternDirect-iOS-sources.zip LanternDirect-Windows-sources.zip INSTALLER-SUR-IPHONE.txt > SHA256SUMS.txt
 
+      - name: Stage release files
+        run: |
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          import shutil
+          source=Path('release');target=source/'publish-files';target.mkdir()
+          shutil.copy2(source/'SHA256SUMS.txt',target/'SHA256SUMS.txt')
+          for line in (source/'SHA256SUMS.txt').read_text().splitlines():
+              name=line.split(None,1)[1]
+              if name!='LanternDirect-Setup.exe':shutil.copy2(source/name,target/name)
+          PYTHON
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: LanternDirect-release-assets
+          path: release/publish-files/*
+          retention-days: 7
+          if-no-files-found: error
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: LanternDirect-release-installer
+          path: release/LanternDirect-Setup.exe
+          retention-days: 7
+          if-no-files-found: error
+
+  installer-smoke:
+    needs: package
+    runs-on: windows-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: LanternDirect-release-installer
+          path: installer-check
+      - name: Install, launch and uninstall on Windows
+        shell: pwsh
+        run: ./installer/smoke.ps1 ./installer-check/LanternDirect-Setup.exe
+
+  release:
+    needs: [package, installer-smoke]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          pattern: LanternDirect-release-*
+          merge-multiple: true
+          path: release
+      - name: Verify release integrity
+        working-directory: release
+        run: sha256sum --check SHA256SUMS.txt
       - name: Upload assets to draft and publish
         run: |
           if gh release view "$RELEASE_TAG" --json isDraft > release/existing-release.json 2>/dev/null; then
@@ -198,10 +263,10 @@ jobs:
           PY
           else
             gh release create "$RELEASE_TAG" --draft --prerelease --target "$GITHUB_SHA" \
-              --title "Lantern Direct $RELEASE_TAG — Nouvelle interface Windows et Linux" --notes-file .github/release-notes.md
+              --title "Lantern Direct $RELEASE_TAG — Favoris, connexion et installation" --notes-file .github/release-notes.md
           fi
           gh release upload "$RELEASE_TAG" \
-            release/LanternDirect-interface-claire.png release/LanternDirect-interface-sombre.png \
+            release/LanternDirect-Setup.exe release/LanternDirect-interface-claire.png release/LanternDirect-interface-sombre.png \
             release/LanternDirect-Linux-arm64.tar.gz release/LanternDirect-Linux-x64.tar.gz release/LanternDirect-Linux-sources.zip \
             release/LanternDirect-Windows-HomeKit.zip release/LanternDirect-unsigned.ipa release/LanternDirect.exe \
             release/LanternDirect-iOS-sources.zip release/LanternDirect-Windows-sources.zip \
@@ -209,7 +274,7 @@ jobs:
           gh release view "$RELEASE_TAG" --json assets > release/assets.json
           python3 - <<'PY'
           import json
-          expected = {'LanternDirect-interface-claire.png', 'LanternDirect-interface-sombre.png', 'LanternDirect-Linux-arm64.tar.gz', 'LanternDirect-Linux-x64.tar.gz', 'LanternDirect-Linux-sources.zip', 'LanternDirect-Windows-HomeKit.zip', 'LanternDirect-unsigned.ipa', 'LanternDirect.exe',
+          expected = {'LanternDirect-Setup.exe', 'LanternDirect-interface-claire.png', 'LanternDirect-interface-sombre.png', 'LanternDirect-Linux-arm64.tar.gz', 'LanternDirect-Linux-x64.tar.gz', 'LanternDirect-Linux-sources.zip', 'LanternDirect-Windows-HomeKit.zip', 'LanternDirect-unsigned.ipa', 'LanternDirect.exe',
                       'LanternDirect-iOS-sources.zip', 'LanternDirect-Windows-sources.zip',
                       'INSTALLER-SUR-IPHONE.txt', 'SHA256SUMS.txt'}
           assets = json.load(open('release/assets.json'))['assets']
@@ -217,4 +282,4 @@ jobs:
           assert all(asset['state'] == 'uploaded' and asset['size'] > 0 for asset in assets)
           PY
           gh release edit "$RELEASE_TAG" --draft=false --prerelease \
-            --title "Lantern Direct $RELEASE_TAG — Nouvelle interface Windows et Linux" --notes-file .github/release-notes.md
+            --title "Lantern Direct $RELEASE_TAG — Favoris, connexion et installation" --notes-file .github/release-notes.md
