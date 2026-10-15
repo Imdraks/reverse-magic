@@ -106,6 +106,7 @@ Section "Uninstall"
   RMDir "$SMPROGRAMS\Lantern Bridge"
   ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "LanternDirectHomeKit"
   ${If} $0 == '"$INSTDIR\LanternDirect.exe" --homekit'
+  ${OrIf} $0 == '"$INSTDIR\LanternDirect.exe" --desktop-homekit'
     DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "LanternDirectHomeKit"
   ${EndIf}
   DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LanternDirect"
