@@ -3,6 +3,26 @@ $setup = (Resolve-Path $args[0]).Path
 $root = Join-Path $env:LOCALAPPDATA 'Programs\LanternDirect'
 $settings = Join-Path $env:LOCALAPPDATA 'LanternDirect'
 $runKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+function Wait-LanternReleased {
+    for ($attempt=0; $attempt -lt 40; $attempt++) {
+        $held = $false
+        try {
+            $probe = [Threading.Mutex]::OpenExisting('LanternDirect.CurrentUser.' + $env:USERNAME)
+            $probe.Dispose()
+            $held = $true
+        } catch { }
+        foreach ($name in @('LanternDirect.exe','node.exe')) {
+            $stream = $null
+            try { $stream = [IO.File]::Open((Join-Path $root $name), [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None) }
+            catch { $held = $true }
+            finally { if ($null -ne $stream) { $stream.Dispose() } }
+        }
+        if (-not $held) { return }
+        Start-Sleep -Milliseconds 250
+    }
+    Get-Process -Name LanternDirect,node -ErrorAction SilentlyContinue | Select-Object Id,ProcessName | Write-Host
+    throw 'Installed processes or executable handles were not released within 10 seconds'
+}
 New-Item -Path $runKey -Force | Out-Null
 New-ItemProperty -Path $runKey -Name LanternDirectHomeKit -Value '"C:\old-portable\LanternDirect.exe" --homekit' -PropertyType String -Force | Out-Null
 $installed = Start-Process -FilePath $setup -ArgumentList '/S' -Wait -PassThru
@@ -69,9 +89,10 @@ if (-not (Test-Path $shortcut)) { throw 'Missing Start menu shortcut' }
 $runValue = (Get-ItemProperty -Path $runKey -Name LanternDirectHomeKit).LanternDirectHomeKit
 if ($runValue -ne ('"' + (Join-Path $root 'LanternDirect.exe') + '" --homekit')) { throw 'Autostart path was not migrated' }
 Write-Host 'Checking desktop bridge autostart migration.'
+Wait-LanternReleased
 New-ItemProperty -Path $runKey -Name LanternDirectHomeKit -Value '"C:\old-portable\LanternDirect.exe" --desktop-homekit' -PropertyType String -Force | Out-Null
 $upgraded = Start-Process -FilePath $setup -ArgumentList '/S' -Wait -PassThru
-if ($upgraded.ExitCode -ne 0) { throw 'Second installer run failed' }
+if ($upgraded.ExitCode -ne 0) { throw "Second installer run failed with code $($upgraded.ExitCode)" }
 $managedRunValue = (Get-ItemProperty -Path $runKey -Name LanternDirectHomeKit).LanternDirectHomeKit
 if ($managedRunValue -ne ('"' + (Join-Path $root 'LanternDirect.exe') + '" --desktop-homekit')) { throw 'Desktop bridge autostart mode was not preserved' }
 Write-Host 'Checking desktop startup.'
