@@ -2,6 +2,7 @@
 let editingDevice=null,selectedRoom='*',gatewaySignature='',backupMode='backup';
 let lscImports=[],lscSetupGeneration=0;
 let currentConversion=null,conversionGeneration=0;
+let recoveryPrepared=false;
 const textElement=(tag,text,className)=>Object.assign(document.createElement(tag),{textContent:text,...(className?{className}:{})});
 const gatewayLocked=()=>Boolean(state.bridge||state.gateway?.active);
 async function gatewayAction(action,data={}){const response=await act('gateway-'+action,data);return response?.gatewayResult;}
@@ -13,6 +14,13 @@ function renderGateway(){
   $('gateway-status').textContent=gateway.active?(gateway.external?'Maison actif · service externe':'Maison activé · commandes verrouillées'):'Maison désactivé';
   $('gateway-status').classList.toggle('on',Boolean(gateway.active));
   $('gateway-summary').textContent=gateway.available?`${devices.length} éclairage${devices.length>1?'s':''} · ${new Set(devices.map(d=>d.room)).size} pièce(s) · ${devices.filter(d=>d.online===true).length} connexion(s) vérifiée(s)`:'Le gestionnaire nécessite le paquet complet Lantern Bridge.';
+  $('gateway-health-summary').textContent=gateway.external?'Service externe actif ; consultez ses journaux pour les connexions.':`${devices.filter(d=>d.online===true).length} disponible(s), ${devices.filter(d=>d.online===false).length} indisponible(s), ${devices.filter(d=>d.online==null).length} à vérifier. ${gateway.active?'Reconnexion progressive automatique jusqu’à 60 s entre tentatives.':'Activez Maison pour la surveillance continue.'}`;
+  for(const id of ['gateway-health-report','gateway-update-check','gateway-update-preview'])$(id).disabled=pending||!gateway.available;
+  for(const id of ['gateway-auto-backup','gateway-auto-backup-enable','gateway-auto-backup-now','gateway-update-download'])$(id).disabled=pending||locked||!gateway.available;
+  $('gateway-auto-backup').hidden=Boolean(gateway.backup?.enabled);
+  $('gateway-auto-backup-enable').hidden=!recoveryPrepared||Boolean(gateway.backup?.enabled);
+  $('gateway-auto-backup-now').disabled=pending||locked||!gateway.backup?.enabled;
+  $('gateway-auto-backup-status').textContent=gateway.backup?.error|| (gateway.backup?.enabled?`Sauvegardes automatiques actives · ${gateway.backup.count} fichier(s), 7 maximum.`:'Sauvegardes automatiques non configurées.');
   $('gateway-lock').hidden=!locked;
   $('gateway-error').hidden=!gateway.error&&!gateway.external;
   $('gateway-error').textContent=gateway.external?'Ce pont fonctionne dans un service ou une autre instance. Arrêtez ce service avant de modifier les appareils ; le pont reste accessible dans Maison.':gateway.error||'';
@@ -20,8 +28,8 @@ function renderGateway(){
   $('gateway-toggle').disabled=pending||!gateway.available||Boolean(state.bridge)||gateway.external||(!devices.length&&!gateway.active);
   $('gateway-pairing').disabled=pending||!gateway.active||gateway.external;
   for(const id of ['gateway-add','gateway-conversion','gateway-refresh','gateway-save-name','gateway-name','gateway-backup','gateway-restore','group-on','group-off'])$(id).disabled=pending||locked||!gateway.available;
-  for(const id of ['conversion-prepare','conversion-reference','conversion-firmware'])$(id).disabled=pending||locked;
-  for(const id of ['conversion-guide','conversion-preflight'])$(id).disabled=pending||locked||!currentConversion;
+  for(const id of ['conversion-prepare','conversion-reference','conversion-firmware','conversion-module'])$(id).disabled=pending||locked;
+  for(const id of ['conversion-guide','conversion-preflight','conversion-report'])$(id).disabled=pending||locked||!currentConversion;
   if(!devices.length){$('group-on').disabled=true;$('group-off').disabled=true;}
   $('gateway-autostart').disabled=pending||!gateway.available||Boolean(state.bridge);
   $('gateway-autostart').checked=Boolean(state.autostart);
@@ -49,6 +57,7 @@ function renderGateway(){
     tile.innerHTML=icon(device.adapter==='magic-lantern-ble'?'bluetooth':'sun');const title=textElement('div','');title.append(textElement('h3',device.name),textElement('p',device.room));header.append(tile,title);card.append(header);
     card.append(textElement('p',device.online===true?(gateway.active?'Disponible':'Connexion vérifiée'):device.online===false?'Indisponible':'Connexion à vérifier','device-health '+(device.online?'online':'')));
     card.append(textElement('small',device.lastConnection?'Dernière connexion : '+new Date(device.lastConnection).toLocaleString('fr-FR'):'Aucune connexion confirmée pendant cette session.'));
+    if(device.online===false)card.append(textElement('p',(device.adapter==='magic-lantern-ble'?'Vérifiez Bluetooth, la portée et les autres applications connectées.':'Vérifiez l’alimentation et le réseau local. Réservez une adresse DHCP pour éviter les changements d’IP.')+(device.nextRetry?' Prochaine vérification : '+new Date(device.nextRetry).toLocaleTimeString('fr-FR')+'.':''),'profile-note'));
     card.append(textElement('p',device.adapter==='lsc-tuya-light'?'LSC / Tuya · Wi-Fi local':device.adapter==='openbeken-light'?'OpenBeken · éclairage local':device.adapter==='magic-lantern-ble'?'Magic Lantern · Bluetooth':'Shelly Gen 1 · éclairage','footnote'));
     if(device.profileError||device.profileWarning)card.append(textElement('p',device.profileError||'Le dernier profil n’a pas pu être enregistré. Vérifiez le stockage.','profile-note'));
     if(device.profile){const memory=device.profile,kind=memory.mode==='colour'?'couleur':memory.mode==='white'?'blanc réglable':memory.mode==='relay'?'éclairage':'mode non restituable';card.append(textElement('p',`Profil mémorisé · ${kind}${memory.state.brightness!==undefined?' · '+memory.state.brightness+' %':''} · ${memory.state.on?'allumé':'éteint'}`,'profile-note'));}
@@ -75,7 +84,7 @@ function renderGateway(){
 function rgbToHsv(hex){const [r,g,b]=hex.slice(1).match(/../g).map(v=>parseInt(v,16)/255),max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min;let hue=0;if(d)hue=max===r?((g-b)/d)%6:max===g?(b-r)/d+2:(r-g)/d+4;return {hue:(hue*60+360)%360,saturation:max?d/max*100:0};}
 async function applyDevice(id,patch){const result=await gatewayAction('apply',{id,patch});if(result)toast(result.results.every(x=>x.ok)?'Commande confirmée.':'Commande non confirmée. Vérifiez la connexion.');}
 function clearCredentials(){for(const id of ['new-device-id','new-local-key','new-username','new-password','new-obk-password','lsc-import-file'])$(id).value='';lscImports=[];lscSetupGeneration++;$('lsc-import-device').replaceChildren();$('lsc-import-row').hidden=true;$('lsc-import-status').textContent='';$('lsc-discovery-results').replaceChildren();$('lsc-discovery-status').textContent='';for(const details of $('new-lsc-fields').querySelectorAll('details'))details.open=false;}
-function adapterFields(){const adapter=$('new-adapter').value;$('new-ble-fields').hidden=adapter!=='magic-lantern-ble';$('new-lsc-fields').hidden=adapter!=='lsc-tuya-light';$('new-shelly-fields').hidden=adapter!=='shelly-gen1-relay';$('new-openbeken-fields').hidden=adapter!=='openbeken-light';}
+function adapterFields(){const adapter=$('new-adapter').value;$('new-ble-fields').hidden=adapter!=='magic-lantern-ble';$('new-lsc-fields').hidden=adapter!=='lsc-tuya-light';$('new-shelly-fields').hidden=adapter!=='shelly-gen1-relay';$('new-openbeken-fields').hidden=adapter!=='openbeken-light';$('new-profile-help').textContent=adapter==='lsc-tuya-light'?'LSC : recherchez sur le réseau ou importez devices.json, puis inspectez les DP. Les profils décrivent des fonctions, pas une compatibilité certifiée de tous les modèles.':adapter==='openbeken-light'?'OpenBeken : l’appareil doit déjà être converti. Choisissez uniquement les fonctions configurées dans son firmware.':adapter==='magic-lantern-ble'?'Magic Lantern : choisissez un contrôleur Bluetooth FFF0 / FFF3. Le test vérifie la connexion sans envoyer de couleur.':'Shelly Gen 1 : indiquez le relais utilisé pour un éclairage, sur son adresse HTTP locale.';}
 function openDevice(device=null,converted=false){
   if(gatewayLocked())return toast('Désactivez Maison avant d’ajouter ou modifier un éclairage.');
   editingDevice=device;$('gateway-device-form').reset();clearCredentials();$('new-test-result').textContent='';$('new-probe-result').hidden=true;
@@ -170,7 +179,7 @@ $('lsc-import-device').onchange=()=>{
 $('gateway-add').onclick=()=>openDevice();$('close-device').onclick=()=>{$('device-dialog').close();clearCredentials();};
 $('device-dialog').addEventListener('close',clearCredentials);$('new-adapter').onchange=()=>{clearCredentials();adapterFields();};
 $('use-current-device').onclick=()=>{if(!state.device)return toast('Sélectionnez d’abord votre contrôleur dans Appareils.');$('new-address').value=state.device;if(!$('new-name').value)$('new-name').value=state.deviceName||'Mon éclairage';};
-$('gateway-device-form').onsubmit=async event=>{event.preventDefault();try{const result=await gatewayAction('save-device',draftDevice());if(result){$('device-dialog').close();clearCredentials();toast('Éclairage enregistré. Vous pouvez réactiver Maison.');}}catch(error){toast(error.message);}};
+$('gateway-device-form').onsubmit=async event=>{event.preventDefault();try{const result=await gatewayAction('save-device',{...draftDevice(),requireTest:true});if(result){$('device-dialog').close();clearCredentials();toast('Connexion vérifiée et éclairage enregistré. Vous pouvez réactiver Maison.');}}catch(error){toast(error.message);}};
 async function testDraft(probe){try{const result=await gatewayAction('test-device',{draft:draftDevice(),probe});if(result){$('new-test-result').textContent=result.message;if(probe){$('new-probe-result').hidden=false;$('new-probe-result').textContent=JSON.stringify(result.details,null,2);}}}catch(error){toast(error.message);}}
 $('new-test').onclick=()=>testDraft(false);$('new-probe').onclick=()=>testDraft(true);
 $('room-filter').onchange=()=>{selectedRoom=$('room-filter').value;renderGateway();};
@@ -181,7 +190,13 @@ $('gateway-pairing').onclick=async()=>{const result=await gatewayAction('pairing
 $('gateway-settings').onsubmit=event=>{event.preventDefault();gatewayAction('settings',{name:$('gateway-name').value.trim()});};
 $('gateway-autostart').onchange=()=>act('gateway-autostart',{enabled:$('gateway-autostart').checked});
 $('gateway-service-download').onclick=()=>downloadFile('lantern-bridge-desktop.service',state.gateway.serviceUnit,'text/plain');
-function openBackup(mode){if(gatewayLocked())return toast('Désactivez Maison avant cette opération.');backupMode=mode;$('backup-form').reset();$('restore-file-row').hidden=mode!=='restore';$('restore-file').required=mode==='restore';$('backup-title').textContent=mode==='restore'?'Retrouver votre installation.':'Gardez votre maison.';$('backup-submit').textContent=mode==='restore'?'Restaurer cette installation':'Télécharger la sauvegarde';$('backup-dialog').showModal();}
+function openBackup(mode){if(gatewayLocked())return toast('Désactivez Maison avant cette opération.');backupMode=mode;$('backup-form').reset();$('restore-file-row').hidden=mode!=='restore';$('restore-key-row').hidden=mode!=='restore';$('restore-file').required=mode==='restore';$('backup-title').textContent=mode==='restore'?'Retrouver votre installation.':mode==='auto'?'Votre clé de récupération.':'Gardez votre maison.';$('backup-submit').textContent=mode==='restore'?'Restaurer cette installation':mode==='auto'?'Télécharger ma clé de récupération':'Télécharger la sauvegarde';$('backup-dialog').showModal();}
+$('gateway-auto-backup').onclick=()=>openBackup('auto');
+$('gateway-auto-backup-enable').onclick=async()=>{if(confirm('Avez-vous conservé le fichier de récupération et sa phrase de passe ailleurs que sur ce PC ? Sans eux, les sauvegardes automatiques seront irrécupérables.')){const result=await gatewayAction('auto-backup-enable',{savedRecovery:true});if(result){recoveryPrepared=false;renderGateway();toast('Sauvegardes automatiques activées.');}}};
+$('gateway-auto-backup-now').onclick=()=>gatewayAction('auto-backup-now');
+$('gateway-health-report').onclick=async()=>{const result=await gatewayAction('health-report');if(result)downloadFile('Lantern-diagnostic.json',JSON.stringify(result,null,2));};
+$('gateway-update-check').onclick=async()=>{const result=await gatewayAction('update-check',{includePrerelease:$('gateway-update-preview').checked});if(result)$('gateway-update-result').textContent=result.available?`Version ${result.latest} disponible.`:'Aucune version plus récente sur ce canal.';};
+$('gateway-update-download').onclick=async()=>{const result=await gatewayAction('update-download',{includePrerelease:$('gateway-update-preview').checked});if(result)$('gateway-update-result').textContent=`Paquet vérifié : ${result.path}\nSHA-256 : ${result.sha256}\nQuittez Lantern avant installation. ${result.rollback}`;};
 $('gateway-backup').onclick=()=>openBackup('backup');$('gateway-restore').onclick=()=>openBackup('restore');$('close-backup').onclick=()=>{$('backup-dialog').close();$('backup-form').reset();};
 $('backup-dialog').addEventListener('close',()=>$('backup-form').reset());
 $('backup-form').onsubmit=async event=>{
@@ -190,25 +205,38 @@ $('backup-form').onsubmit=async event=>{
     if(backupMode==='restore'){
       const file=$('restore-file').files[0];if(!file||file.size>2*1024*1024)throw Error('Choisissez une sauvegarde Lantern de moins de 2 Mo.');
       if(!confirm('Remplacer la configuration et l’identité Maison du nouveau pont ? Gardez l’ancien pont éteint.'))return;data.backup=await file.text();
+      const recovery=$('restore-key-file').files[0];if(recovery){if(recovery.size>16384)throw Error('Clé de récupération trop volumineuse.');data.recoveryKey=await recovery.text();}
     }
-    const result=await gatewayAction(backupMode,data);
-    if(result){if(backupMode==='backup')downloadFile(result.filename,result.backup);$('backup-dialog').close();toast(backupMode==='backup'?'Sauvegarde chiffrée téléchargée.':'Installation restaurée. Vous pouvez réactiver Maison.');}
+    const result=await gatewayAction(backupMode==='auto'?'auto-backup-prepare':backupMode,data);
+    if(result){if(backupMode==='backup')downloadFile(result.filename,result.backup);if(backupMode==='auto'){downloadFile(result.filename,result.recovery);recoveryPrepared=true;renderGateway();}$('backup-form').reset();$('backup-dialog').close();toast(backupMode==='backup'?'Sauvegarde chiffrée téléchargée.':backupMode==='auto'?'Conservez le fichier et sa phrase de passe, puis confirmez l’activation.':'Installation restaurée. Vous pouvez réactiver Maison.');}
   }catch(error){toast(error.message);}
 };
 function resetConversion(){currentConversion=null;conversionGeneration++;$('conversion-result').hidden=true;}
 $('gateway-conversion').onclick=()=>{if(gatewayLocked()||pending)return;resetConversion();$('conversion-dialog').showModal();};
 $('close-conversion').onclick=()=>$('conversion-dialog').close();
 $('conversion-dialog').addEventListener('close',resetConversion);
-$('conversion-reference').oninput=resetConversion;$('conversion-firmware').oninput=resetConversion;
+for(const id of ['conversion-reference','conversion-firmware','conversion-module'])$(id).oninput=resetConversion;
 $('conversion-form').onsubmit=async event=>{
   event.preventDefault();if(gatewayLocked()||pending)return;
   resetConversion();const generation=conversionGeneration;
-  const result=await gatewayAction('conversion-plan',{reference:$('conversion-reference').value.trim(),firmware:$('conversion-firmware').value.trim()});
+  const result=await gatewayAction('conversion-plan',{reference:$('conversion-reference').value.trim(),firmware:$('conversion-firmware').value.trim(),module:$('conversion-module').value.trim()});
   if(!result||generation!==conversionGeneration||!$('conversion-dialog').open||gatewayLocked())return;
   currentConversion=result;$('conversion-title').textContent=result.title;$('conversion-status').textContent=result.message;
+  const assessment=result.assessment,labels={match:'Correspondance déclarée',mismatch:'Écart avec le catalogue',unknown:'Information manquante',incomplete:'Informations incomplètes',candidate:'Profil candidat, matériel à vérifier'};
+  $('conversion-assessment').textContent='Comparaison locale uniquement · puce non détectée · aucun exploit exécuté.';
+  $('conversion-candidates').replaceChildren(...assessment.candidates.map(candidate=>{
+    const card=document.createElement('section');card.append(textElement('h4',labels[candidate.status]));
+    card.append(textElement('p',`${candidate.module} / ${candidate.chip} · firmware ${candidate.firmware} dans le catalogue`));
+    const checks=document.createElement('ul');checks.append(...candidate.checks.map(check=>textElement('li',`${check.name} — ${labels[check.status]} : ${check.detail}`)));card.append(checks);
+    const source=textElement('a','Consulter la fiche Cloudcutter');source.href=candidate.source;source.target='_blank';source.rel='noopener noreferrer';card.append(source);return card;
+  }));
+  $('conversion-blockers').replaceChildren(...assessment.blockers.map(reason=>textElement('li',reason)));
+  $('conversion-testimony').replaceChildren();
+  if(assessment.testimony){$('conversion-testimony').append(document.createTextNode(assessment.testimony.note+' '));const source=textElement('a','Lire le témoignage');source.href=assessment.testimony.source;source.target='_blank';source.rel='noopener noreferrer';$('conversion-testimony').append(source);}
   $('conversion-steps').replaceChildren(...result.steps.map(step=>textElement('li',step)));$('conversion-hash').textContent='SHA-256 du diagnostic : '+result.preflightSHA256;
   $('conversion-result').hidden=false;renderGateway();
 };
 $('conversion-guide').onclick=()=>{if(currentConversion&&!gatewayLocked()&&!pending)downloadFile('Preparation-LSC-'+currentConversion.reference+'.md',currentConversion.guide,'text/markdown');};
 $('conversion-preflight').onclick=()=>{if(currentConversion&&!gatewayLocked()&&!pending)downloadFile('verifier-conversion.py',currentConversion.preflight,'text/x-python');};
+$('conversion-report').onclick=()=>{if(currentConversion&&!gatewayLocked()&&!pending)downloadFile('Compatibilite-LSC-'+currentConversion.reference+'.json',JSON.stringify(currentConversion.assessment,null,2),'application/json');};
 renderGateway();

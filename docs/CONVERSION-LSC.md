@@ -22,6 +22,10 @@ Ce script vérifie uniquement les outils et la présence annoncée du mode AP. I
 
 ## 3. Identifier la variante avant toute écriture
 
+Dans **Le pont → Préparer une conversion**, saisir la référence et la version affichée dans LSC. Renseigner le module seulement s’il est déjà connu par une source fiable ; laisser vide sinon, sans ouvrir l’ampoule. L’assistant compare ces déclarations à son catalogue local, sans connexion Internet nécessaire. Il distingue les écarts, les informations manquantes et les profils candidats. Une correspondance complète reste une déclaration, pas une identification physique.
+
+Le bouton **Télécharger le rapport de compatibilité** exporte ces informations, les liens vers les sources et les points à confirmer en JSON. Le rapport n’inclut ni clé locale ni mot de passe. `detectedChip` reste `null`, `attempts` reste vide et `canFlash` reste faux : aucun exploit n’est exécuté. Un exploit qui échoue ne permet pas d’identifier une puce. Le catalogue embarqué couvre actuellement une seule variante documentée de la référence 970709 / 3001686 ; il ne recherche pas automatiquement tous les profils disponibles sur Internet.
+
 Pour **970709 / 3001686**, le [catalogue Cloudcutter](https://github.com/tuya-cloudcutter/tuya-cloudcutter.github.io/blob/master/devices/lsc-3001686-970709-warm-white-smart-filament-e27-806lumen.json) décrit un module WBLC5, une puce BK7231T et un profil **2.9.6**. Un [témoignage](https://github.com/tuya-cloudcutter/tuya-cloudcutter/issues/213) mentionne aussi 1.1.6, sans constituer une validation de votre appareil. Ni le nom A60 Gold, ni la référence, ni l’OUI MAC ne suffisent à établir la variante exacte. `Jsonver` est une version de configuration, pas une preuve de version du firmware.
 
 **Le flash reste bloqué dans Lantern**, y compris pour 1.1.6 : aucun profil ni brochage n’est sélectionné automatiquement. Il faut confirmer puce, révision, pilote LED et profil vulnérable avec des éléments matériels/protocolaires fiables avant de choisir un fichier. Ne pas essayer le profil 2.9.6 sur la seule base de la référence. Une intervention sur le secteur ou un démontage n’est pas proposé par ce parcours.

@@ -110,10 +110,21 @@ test('conversion assistant exports a blocked preparation plan and resumes a real
     await page.goto(origin+'/#key='+token);await page.waitForFunction(()=>!document.getElementById('gateway-conversion').disabled);
     await page.locator('#gateway-conversion').click();await page.locator('#conversion-prepare').click();await page.locator('#conversion-result:not([hidden])').waitFor();
     assert.match(await page.locator('#conversion-status').textContent(),/2\.9\.6/);assert.equal(await page.getByRole('button',{name:'Flash automatique indisponible',exact:true}).isDisabled(),true);
+    assert.match(await page.locator('#conversion-candidates').textContent(),/Écart avec le catalogue/);
+    assert.match(await page.locator('#conversion-assessment').textContent(),/puce non détectée/);
+    let reportDownload=page.waitForEvent('download');await page.locator('#conversion-report').click();
+    const report=JSON.parse(await fs.readFile(await (await reportDownload).path(),'utf8'));
+    assert.equal(report.inputs.firmware,'1.1.6');assert.equal(report.canFlash,false);assert.deepEqual(report.attempts,[]);
     let downloading=page.waitForEvent('download');await page.locator('#conversion-guide').click();const guide=await downloading;assert.match(await fs.readFile(await guide.path(),'utf8'),/Essayer Ubuntu/);
     downloading=page.waitForEvent('download');await page.locator('#conversion-preflight').click();const diagnostic=await downloading,bytes=await fs.readFile(await diagnostic.path());
     assert.ok((await page.locator('#conversion-hash').textContent()).includes(crypto.createHash('sha256').update(bytes).digest('hex')));
     await page.locator('#conversion-firmware').fill('2.9.6');assert.equal(await page.locator('#conversion-result').isHidden(),true);
+    await page.locator('#conversion-module').fill('WBLC5');await page.locator('#conversion-prepare').click();await page.locator('#conversion-result:not([hidden])').waitFor();
+    assert.match(await page.locator('#conversion-candidates').textContent(),/Profil candidat, matériel à vérifier/);
+    await page.locator('#conversion-module').fill('ESP8266');assert.equal(await page.locator('#conversion-result').isHidden(),true);
+    assert.equal(await page.locator('#conversion-report').isVisible(),false);
+    await page.locator('#conversion-prepare').click();await page.locator('#conversion-result:not([hidden])').waitFor();
+    assert.match(await page.locator('#conversion-candidates').textContent(),/Écart avec le catalogue/);
     await page.locator('#close-conversion').click();
     const old=(await api('gateway-save-device',{name:'Filament libre',room:'Salon',adapter:'lsc-tuya-light',options:{ip:'127.0.0.1',version:'3.5',profile:'white-v2'},credentials:{deviceId:'owned-test-light',localKey:'0123456789abcdef'}})).result.gatewayResult.devices[0];
     await page.getByRole('heading',{name:'Filament libre',exact:true}).waitFor();page.once('dialog',d=>d.accept());
@@ -131,6 +142,28 @@ test('conversion assistant exports a blocked preparation plan and resumes a real
     await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
     assert.deepEqual(pageErrors,[]);
   }finally{if(browser)await browser.close();lines.close();child.kill('SIGTERM');await exit;await fixture.close();assert.equal(errors,'');}
+});
+
+test('desktop recovery setup downloads an encrypted key before activation and exports a redacted health report', {timeout:45000},async()=>{
+  const child=spawn(process.env.LANTERN_TEST_PYTHON||path.join(root,'.venv/bin/python'),['-u',path.join(root,'linux/tests/gui_fixture.py')],{cwd:root,stdio:['ignore','pipe','pipe']});
+  const exit=once(child,'exit'),lines=readline.createInterface({input:child.stdout});let browser,errors='';child.stderr.on('data',chunk=>errors+=chunk);
+  try{
+    const [line]=await once(lines,'line'),{origin,token}=JSON.parse(line);
+    browser=await chromium.launch({executablePath:process.env.LANTERN_CHROMIUM||'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
+    const page=await browser.newPage({viewport:{width:1320,height:1020},acceptDownloads:true}),pageErrors=[];page.on('pageerror',error=>pageErrors.push(error.message));
+    await page.goto(origin+'/#key='+token);await page.waitForFunction(()=>!document.getElementById('gateway-health-report').disabled);
+    let downloading=page.waitForEvent('download');await page.locator('#gateway-health-report').click();
+    const report=JSON.parse(await fs.readFile(await (await downloading).path(),'utf8'));assert.equal(report.format,'lantern-health-1');assert.ok(!JSON.stringify(report).includes(token));
+    await page.getByRole('button',{name:'Réglages',exact:true}).click();await page.locator('#gateway-auto-backup').click();
+    await page.locator('#backup-password').fill('a browser recovery password');downloading=page.waitForEvent('download');await page.locator('#backup-submit').click();
+    const recovery=JSON.parse(await fs.readFile(await (await downloading).path(),'utf8'));assert.equal(recovery.format,'lantern-recovery-1');assert.ok(!JSON.stringify(recovery).includes('PRIVATE KEY'));
+    await page.locator('#backup-dialog').waitFor({state:'hidden'});assert.equal(await page.locator('#backup-password').inputValue(),'');
+    assert.match(await page.locator('#gateway-auto-backup-status').textContent(),/non configurées/);
+    page.once('dialog',dialog=>dialog.accept());await page.locator('#gateway-auto-backup-enable').click();await page.waitForFunction(()=>document.getElementById('gateway-auto-backup-status').textContent.includes('actives'));
+    await page.locator('#gateway-auto-backup-now').click();await page.waitForFunction(()=>document.getElementById('gateway-auto-backup-status').textContent.includes('2 fichier'));
+    await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
+    assert.deepEqual(pageErrors,[]);
+  }finally{if(browser)await browser.close();lines.close();child.kill('SIGTERM');await exit;assert.equal(errors,'');}
 });
 
 test('desktop installation: add and edit a real HTTP light, Home locks API and UI, encrypted backup restores the same identity', {timeout:90000},async()=>{

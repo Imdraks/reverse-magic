@@ -5,6 +5,7 @@ const { ShellyGen1 } = require('./adapters/shelly-gen1');
 const {LscTuya,description}=require('./adapters/lsc-tuya');
 const lsc=require('./adapters/lsc-profiles');
 const openbeken=require('./adapters/openbeken-light');
+const {privateIPv4}=require('./local-address');
 const adapters = Object.freeze({
   'openbeken-light': {
     name:'OpenBeken — éclairage local',transport:'Wi-Fi / HTTP local',capability:'white-light',manufacturer:'OpenBeken',
@@ -27,7 +28,7 @@ const adapters = Object.freeze({
     validate(options) {
       let url;
       try { url = new URL(options.host); } catch { throw new Error('Adresse Shelly attendue : http://192.168.1.20'); }
-      if (url.protocol !== 'http:' || url.username || url.password || url.pathname !== '/' || url.search || url.hash) throw new Error('Adresse HTTP locale sans chemin ni identifiants attendue.');
+      if (url.protocol !== 'http:' || !privateIPv4(url.hostname) || url.username || url.password || url.pathname !== '/' || url.search || url.hash) throw new Error('Adresse IPv4 HTTP locale sans chemin ni identifiants attendue.');
       if (!Number.isInteger(options.channel) || options.channel < 0 || options.channel > 3) throw new Error('Canal de relais invalide.');
       const auth = [options.usernameEnv, options.passwordEnv];
       if (auth.some(x => x !== undefined) && !auth.every(x => typeof x === 'string' && /^[A-Z][A-Z0-9_]{0,79}$/.test(x))) throw new Error('Définissez les deux noms de variables d’authentification.');

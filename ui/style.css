@@ -11,3 +11,6 @@
 .setup-panel{padding:20px;margin:18px 0;border:1px solid var(--border);border-radius:16px;background:var(--canvas)}.setup-panel h3{margin:0 0 10px;font-size:18px;letter-spacing:-.4px}.setup-panel>p{font-size:12px;line-height:1.65;color:var(--muted)}#lsc-discovery-results .device-actions{padding:12px 0;border-top:1px solid var(--border)}#lsc-discovery-results span{font-size:11px;overflow-wrap:anywhere;flex:1 1 180px;min-width:0}.setup-panel input[type=file],.setup-panel select{max-width:100%;min-width:0}
 
 #conversion-hash{overflow-wrap:anywhere}#conversion-steps{padding-left:22px;font-size:12px;line-height:1.7;color:var(--muted)}#conversion-steps li{padding:7px 0}#conversion-status{line-height:1.7}
+
+#gateway-update-result{white-space:pre-wrap;overflow-wrap:anywhere}
+#conversion-candidates p{overflow-wrap:anywhere}

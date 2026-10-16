@@ -6,13 +6,15 @@ Le projet se concentre sur l’éclairage : ampoules, rubans, luminaires et cont
 
 Une voie de conversion vers un firmware libre est désormais préparée dans l’interface : **Préparer une conversion** fournit un guide Windows → clé USB Linux → Android. Le flash n’est pas automatisé : la variante 970709 en 1.1.6 reste à confirmer. Après conversion réelle, un pilote OpenBeken local prend en charge les éclairages blancs. [Parcours et limites](docs/CONVERSION-LSC.md).
 
+L’assistant compare également référence, firmware et module déclaré au catalogue local, affiche les écarts et exporte un rapport de compatibilité sourcé. Il ne détecte pas physiquement la puce et ne lance pas d’essais d’exploits.
+
 ## Installer
 
-[**Télécharger v0.9.0 — OpenBeken et préparation de conversion, version de test**](https://github.com/Imdraks/reverse-magic/releases/tag/v0.9.0)
+[**Télécharger v0.10.0 — Fiabilité et sauvegardes automatiques, version de test**](https://github.com/Imdraks/reverse-magic/releases/tag/v0.10.0)
 
-- **Windows** : [installateur](https://github.com/Imdraks/reverse-magic/releases/download/v0.9.0/LanternDirect-Setup.exe) ou [paquet portable complet](https://github.com/Imdraks/reverse-magic/releases/download/v0.9.0/LanternDirect-Windows-HomeKit.zip).
-- **Raspberry Pi OS 64 bits** : [ARM64](https://github.com/Imdraks/reverse-magic/releases/download/v0.9.0/LanternDirect-Linux-arm64.tar.gz), installation terminal et service sans écran.
-- **PC Linux** : [x64](https://github.com/Imdraks/reverse-magic/releases/download/v0.9.0/LanternDirect-Linux-x64.tar.gz), terminal, service et interface locale.
+- **Windows** : [installateur](https://github.com/Imdraks/reverse-magic/releases/download/v0.10.0/LanternDirect-Setup.exe) ou [paquet portable complet](https://github.com/Imdraks/reverse-magic/releases/download/v0.10.0/LanternDirect-Windows-HomeKit.zip).
+- **Raspberry Pi OS 64 bits** : [ARM64](https://github.com/Imdraks/reverse-magic/releases/download/v0.10.0/LanternDirect-Linux-arm64.tar.gz), installation terminal et service sans écran.
+- **PC Linux** : [x64](https://github.com/Imdraks/reverse-magic/releases/download/v0.10.0/LanternDirect-Linux-x64.tar.gz), terminal, service et interface locale.
 
 Les noms techniques `LanternDirect` et les dossiers de données sont conservés pour faciliter les mises à jour. L’installateur contient Node et le pont ; le runtime .NET est inclus. Sous Linux, installer Python/BlueZ selon [le guide](linux/README.md). WebView2 est nécessaire pour le GUI Windows moderne.
 
@@ -67,3 +69,7 @@ Les appareils doivent être joignables par la passerelle, et l’iPhone sur le m
 [Architecture et contrat des adaptateurs](docs/ARCHITECTURE.md) · [Windows](windows/README.md) · [Linux/Pi](linux/README.md) · [moteur HomeKit](homekit/README.md)
 
 Les tests couvrent l’appairage HomeKit chiffré réel, le routage de plusieurs accessoires, l’isolation des pannes, l’API de relais HTTP, les trames Bluetooth GRB, la persistance, le GUI et l’installation Windows. Les radios/relais physiques restent à valider sur le matériel cible. La passerelle n’est pas certifiée Apple.
+
+### Fiabilité au quotidien
+
+Ajout guidé avec connexion revérifiée, diagnostic privé disponible dans Maison, lectures de fond limitées et reprise progressive. Sauvegardes automatiques chiffrées avant modification avec clé de récupération séparée, service utilisateur Linux/Pi installable et téléchargements officiels contrôlés par taille et SHA-256. [Fonctionnement, installation et limites de sécurité](docs/FIABILITE-SECURITE.md).

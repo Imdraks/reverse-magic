@@ -68,6 +68,27 @@ test('conversion preparation never authorizes flashing, is locked by Home and ha
   }finally{await manager.close();await fs.rm(directory,{recursive:true,force:true});}
 });
 
+test('conversion distinguishes catalogue evidence, user declarations and unknown hardware',async()=>{
+  const evaluate=async data=>(await conversionPlan(data)).assessment;
+  const stock=await evaluate({reference:'970709',firmware:'1.1.6'});
+  assert.equal(stock.candidates[0].status,'mismatch');
+  assert.equal(stock.candidates[0].checks[1].status,'mismatch');
+  assert.equal(stock.candidates[0].checks[2].status,'unknown');
+  assert.equal(stock.testimony.verified,false);assert.equal(stock.detectedChip,null);
+  const incomplete=await evaluate({reference:'3001686',firmware:'2.9.6'});
+  assert.equal(incomplete.candidates[0].status,'incomplete');
+  const declared=await evaluate({reference:'970709',firmware:'2.9.6',module:'WBLC5'});
+  assert.equal(declared.candidates[0].status,'candidate');assert.equal(declared.inputs.origin,'user-declared');
+  const differentModule=await evaluate({reference:'970709',firmware:'2.9.6',module:'ESP8266'});
+  assert.equal(differentModule.candidates[0].status,'mismatch');assert.equal(differentModule.candidates[0].checks[2].status,'mismatch');
+  const unknown=await evaluate({reference:'999999',firmware:'2.9.6',module:'WBLC5'});
+  assert.deepEqual(unknown.candidates,[]);assert.equal(unknown.testimony,null);
+  for(const report of [stock,incomplete,declared,differentModule,unknown]){
+    assert.equal(report.canFlash,false);assert.equal(report.detectedChip,null);assert.deepEqual(report.attempts,[]);assert.ok(report.blockers.length>=2);
+  }
+  for(const module of ['../WBLC5','$(id)','WBLC5\n','A'.repeat(33),{},null])await assert.rejects(conversionPlan({module}));
+});
+
 test('migration to OpenBeken verifies the real device before save and preserves HomeKit identity, room and backup',{timeout:20000},async()=>{
   const {TuyaDeviceFixture}=require('./helpers/tuya-device');
   const tuya=await new TuyaDeviceFixture('3.5',{20:true,21:'white',22:600,23:500}).start();

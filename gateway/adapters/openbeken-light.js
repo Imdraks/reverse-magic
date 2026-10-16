@@ -1,13 +1,12 @@
 'use strict';
 const http=require('node:http');
-const net=require('node:net');
+const {privateIPv4}=require('../local-address');
 const {validateFields}=require('../observed-engine');
 const endpoints=new Map();let active=0;const queue=[];
 async function slot(){if(active>=4)await new Promise(resolve=>queue.push(resolve));else active++;return()=>{const next=queue.shift();if(next)next();else active--;};}
 function validate(options){
   let url;try{url=new URL(options.host);}catch{throw Error('Adresse OpenBeken attendue : http://192.168.1.20');}
-  const ip=url.hostname,parts=ip.split('.').map(Number);
-  const local=net.isIP(ip)===4&&(parts[0]===10||parts[0]===127||(parts[0]===192&&parts[1]===168)||(parts[0]===172&&parts[1]>=16&&parts[1]<=31)||(parts[0]===169&&parts[1]===254));
+  const local=privateIPv4(url.hostname);
   if(url.protocol!=='http:'||!local||url.username||url.password||url.pathname!=='/'||url.search||url.hash)throw Error('Utilisez une adresse IPv4 locale HTTP, sans chemin ni identifiants.');
   if(!['dimmer','cct'].includes(options.profile))throw Error('Profil OpenBeken attendu : dimmer ou cct.');
   if(options.passwordEnv!==undefined&&(typeof options.passwordEnv!=='string'||! /^[A-Z][A-Z0-9_]{0,79}$/.test(options.passwordEnv)))throw Error('Nom de variable de mot de passe invalide.');

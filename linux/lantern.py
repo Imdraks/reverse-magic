@@ -43,7 +43,7 @@ def node_path():
 
 def quote_unit(value):
     if '\n' in str(value) or '\r' in str(value): raise ValueError('Chemin systemd invalide.')
-    return '"' + str(value).replace('\\', '\\\\').replace('"', '\\"').replace('%', '%%') + '"'
+    return '"' + str(value).replace('\\', '\\\\').replace('"', '\\"').replace('%', '%%').replace('$', '$$') + '"'
 
 def service_unit(args):
     user = pwd.getpwuid(os.getuid()).pw_name
@@ -100,6 +100,21 @@ WantedBy=multi-user.target
 '''
 
 async def run(args):
+    if args.command == 'desktop-service':
+        base=(args.data_dir or Path(os.environ.get('XDG_STATE_HOME', str(Path.home()/'.local/state')))/'lantern-direct/homekit').expanduser().resolve()
+        script="const {DesktopManager}=require('./gateway/desktop-manager');(async()=>{const m=await new DesktopManager(process.argv[1]).init();try{const s=await m.snapshot();if(!s.devices.length||s.active)throw Error();process.stdout.write(s.serviceUnit);}finally{await m.close();}})().catch(()=>process.exitCode=1);"
+        result=subprocess.run([str(node_path()),'-e',script,str(base/'desktop-bridge')],cwd=ROOT,capture_output=True,text=True,timeout=20)
+        if result.returncode:raise RuntimeError('Ajoutez au moins un éclairage dans Lantern et arrêtez Maison avant de préparer le service.')
+        if not args.install:print(result.stdout,end='');return
+        directory=Path(os.environ.get('XDG_CONFIG_HOME',str(Path.home()/'.config')))/'systemd/user'
+        directory.mkdir(parents=True,exist_ok=True)
+        unit=directory/'lantern-bridge-desktop.service'
+        temporary=unit.with_suffix('.tmp');temporary.write_text(result.stdout);temporary.chmod(0o600);temporary.replace(unit)
+        subprocess.run(['systemctl','--user','daemon-reload'],check=True)
+        subprocess.run(['systemctl','--user','enable','--now','lantern-bridge-desktop.service'],check=True)
+        print('Service utilisateur activé. État : systemctl --user status lantern-bridge-desktop')
+        print('Sans session ouverte : demander à l’administrateur d’activer loginctl enable-linger pour votre compte. Ne pas activer aussi le démarrage graphique.')
+        return
     if args.command == 'gateway-service':
         unit=gateway_service_unit(args)
         if not args.install:print(unit,end='');return
@@ -177,6 +192,9 @@ async def run(args):
 def parser():
     result = argparse.ArgumentParser(description='Lantern Direct — Linux et Raspberry Pi, terminal / Maison')
     commands = result.add_subparsers(dest='command', required=True)
+    desktop_service=commands.add_parser('desktop-service',help='Installer le service utilisateur de l’installation créée dans l’interface')
+    desktop_service.add_argument('--data-dir',type=Path)
+    desktop_service.add_argument('--install',action='store_true')
     gateway = commands.add_parser('gateway', help='Pont HomeKit multi-appareils (init, adapters, check, run, pairing)')
     gateway.add_argument('arguments', nargs=argparse.REMAINDER)
     service=commands.add_parser('gateway-service',help='Service systemd du pont multi-appareils')

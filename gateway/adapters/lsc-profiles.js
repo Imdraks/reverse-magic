@@ -1,5 +1,5 @@
 'use strict';
-const net=require('node:net');
+const {privateIPv4}=require('../local-address');
 const LIGHTS=Object.freeze({
   'rgbcct-v1':{dps:{on:1,mode:2,brightness:3,temperature:4,color:5},minimum:25,maximum:255,colorFormat:'rgbhsv',temperatureMaximum:255},
   'rgbcct-v2':{dps:{on:20,mode:21,brightness:22,temperature:23,color:24},minimum:10,maximum:1000,colorFormat:'hsv',temperatureMaximum:1000},
@@ -13,7 +13,7 @@ const COMMON=['ip','port','deviceIdEnv','localKeyEnv','version'];
 function envName(value){return typeof value==='string'&&/^[A-Z][A-Z0-9_]{0,79}$/.test(value);}
 function integer(value,min,max){return Number.isInteger(value)&&value>=min&&value<=max;}
 function validateCommon(options){
-  if(net.isIP(options.ip)!==4||!envName(options.deviceIdEnv)||!envName(options.localKeyEnv)||!['3.1','3.3','3.4','3.5'].includes(options.version))throw new Error('LSC : IP, variables d’identifiant/clé locale ou version Tuya invalides.');
+  if(!privateIPv4(options.ip)||!envName(options.deviceIdEnv)||!envName(options.localKeyEnv)||!['3.1','3.3','3.4','3.5'].includes(options.version))throw new Error('LSC : IPv4 locale, variables d’identifiant/clé locale ou version Tuya invalides.');
   if(options.port!==undefined&&!integer(options.port,1,65535))throw new Error('Port Tuya invalide.');
   return `${options.ip}:${options.port||6668}`;
 }

@@ -113,7 +113,7 @@ class Desktop:
         if self.controller and not self.controller.connected and not self.connect_task and not self.bridge_task and self.connection_issue is None:
             self.connection_issue=issue(ConnectionError('Connexion perdue.'));self.status='Connexion interrompue.'
         from desktop_tools import autostart_enabled
-        return dict(rememberedProfile=self.remembered_profile,profileError=self.profile_error,autostart=autostart_enabled(),gateway=self.gateway_host.state if self.gateway_host else {'available':False,'active':False},version='0.9.0',favorites=favorites,favoritesError=error,canSaveFavorite=self.known and not self.mic and not error,connectionIssue=self.connection_issue,connecting=self.connect_task is not None,connectionAttempt=self.attempt,platform='linux',connected=bool(self.controller and self.controller.connected),device=self.device,deviceName=self.device_name,
+        return dict(rememberedProfile=self.remembered_profile,profileError=self.profile_error,autostart=autostart_enabled(),gateway=self.gateway_host.state if self.gateway_host else {'available':False,'active':False},version='0.10.0',favorites=favorites,favoritesError=error,canSaveFavorite=self.known and not self.mic and not error,connectionIssue=self.connection_issue,connecting=self.connect_task is not None,connectionAttempt=self.attempt,platform='linux',connected=bool(self.controller and self.controller.connected),device=self.device,deviceName=self.device_name,
                     on=self.on,brightness=self.brightness,rgb=self.rgb,mic=self.mic,bridge=self.bridge_task is not None and not self.bridge_task.done(),
                     pairingReady=self.pairing_ready,devices=self.devices,effects=self.effects,status=self.status)
 
@@ -315,6 +315,8 @@ class Handler(BaseHTTPRequestHandler):
     def respond(self,status,content,kind='application/json'):
         self.send_response(status);self.send_header('Content-Type',kind);self.send_header('Content-Length',str(len(content)))
         self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff')
+        self.send_header('X-Frame-Options','DENY');self.send_header('Cross-Origin-Resource-Policy','same-origin')
+        self.send_header('Permissions-Policy','camera=(), microphone=(), geolocation=()')
         self.send_header('Referrer-Policy','no-referrer');self.end_headers()
         try:self.wfile.write(content)
         except (BrokenPipeError,ConnectionResetError):pass

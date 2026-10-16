@@ -29,7 +29,7 @@ class Gateway {
         .setCharacteristic(Characteristic.Manufacturer, 'Lantern Bridge')
         .setCharacteristic(Characteristic.Model, 'HomeKit Bridge')
         .setCharacteristic(Characteristic.SerialNumber, this.config.id)
-        .setCharacteristic(Characteristic.FirmwareRevision, '0.9.0');
+        .setCharacteristic(Characteristic.FirmwareRevision, '0.10.0');
       for (const device of this.config.devices) {
         const definition = adapters[device.adapter];
         const adapter = this.adapterFactory ? this.adapterFactory(device) : definition.create(device, {});
@@ -60,8 +60,19 @@ class Gateway {
     } catch (error) { await this.stop(); throw error; }
   }
   async refresh() {
-    await Promise.allSettled(this.devices.map(device => device.engine.refresh()));
-    if (!this.closed) this.onStatus(this.devices.map(device => ({ id: device.id, online: device.engine.online,profileWarning:Boolean(device.engine.persistenceError) })));
+    if(this.refreshing)return this.refreshing;
+    this.refreshing=(async()=>{
+      let index=0;
+      await Promise.all(Array.from({length:Math.min(4,this.devices.length)},async()=>{
+        while(index<this.devices.length&&!this.closed){const device=this.devices[index++];
+          if(device.nextProbe>Date.now())continue;
+          await device.engine.refresh();device.lastCheck=new Date().toISOString();
+          device.failures=device.engine.online?0:Math.min((device.failures||0)+1,10);
+          device.nextProbe=Date.now()+(device.failures?Math.min(60000,5000*2**(device.failures-1)):5000);
+        }
+      }));
+      if (!this.closed) this.onStatus(this.devices.map(device => ({id:device.id,online:device.engine.online,lastCheck:device.lastCheck,failures:device.failures||0,nextRetry:device.engine.online?null:new Date(device.nextProbe||Date.now()).toISOString(),profileWarning:Boolean(device.engine.persistenceError)})));
+    })().finally(()=>{this.refreshing=null;});return this.refreshing;
   }
   async stop() {
     if (this.closed) return;
