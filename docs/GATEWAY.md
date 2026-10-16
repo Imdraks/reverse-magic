@@ -10,12 +10,13 @@ Le [gestionnaire graphique](DESKTOP.md) permet maintenant d’ajouter des éclai
 |---|---|---|---|
 | `magic-lantern-ble` | Bluetooth LE FFF0/FFF3 | Allumage, luminosité, couleur | Contrôleurs compatibles avec le protocole documenté, pas tous les rubans Bluetooth ; correction GRB conservée |
 | `shelly-gen1-relay` | API HTTP locale Shelly Gen 1 pour éclairage | Interrupteur marche/arrêt par canal | Mode relais uniquement ; pas Gen 2/3, volet ou variateur |
+| `openbeken-light` | HTTP local OpenBeken, après conversion et configuration | Marche/arrêt, luminosité, blanc réglable selon profil | Profils blancs uniquement ; aucune installation de firmware ; [guide](OPENBEKEN.md) |
 
 Le périmètre est exclusivement l’éclairage. [LSC Smart Connect / Tuya LAN](LSC.md) fournit des profils de lumière blanche/RGB/CCT/dimmer et un diagnostic en lecture seule. Chaque nouveau protocole demande un adaptateur et des essais. Zigbee exige une radio/passerelle adaptée ; un appareil limité au cloud peut nécessiter une API et des identifiants. Le pont ne peut pas rendre automatiquement compatible un produit dont le protocole est inaccessible. Il n’est pas certifié Apple.
 
 ## Installation
 
-Utilisez les paquets complets de la [release](https://github.com/Imdraks/reverse-magic/releases/tag/v0.8.2). Les noms de fichiers `LanternDirect` sont conservés pour faciliter la mise à jour et protéger les données existantes.
+Utilisez les paquets complets de la [release](https://github.com/Imdraks/reverse-magic/releases/tag/v0.9.0). Les noms de fichiers `LanternDirect` sont conservés pour faciliter la mise à jour et protéger les données existantes.
 
 Sur Linux/Pi 64 bits : extraire le paquet ARM64 (Pi) ou x64 (PC), installer `python3-venv` et BlueZ, puis lancer `./install.sh`. Les détails radio restent dans [le guide Linux](../linux/README.md). Le pont HTTP seul n’utilise pas la radio Bluetooth.
 

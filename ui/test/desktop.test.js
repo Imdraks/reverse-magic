@@ -97,6 +97,42 @@ test('desktop UI: authenticated API, devices, GRB colour, Maison pairing and ada
   }
 });
 
+test('conversion assistant exports a blocked preparation plan and resumes a real OpenBeken light without losing its ID', {timeout:45000},async()=>{
+  const crypto=require('node:crypto'),{OpenBekenFixture}=require('../../homekit/test/helpers/openbeken-device');
+  const fixture=await new OpenBekenFixture().start();fixture.password='browser-private-pass';
+  const child=spawn(process.env.LANTERN_TEST_PYTHON||path.join(root,'.venv/bin/python'),['-u',path.join(root,'linux/tests/gui_fixture.py')],{cwd:root,stdio:['ignore','pipe','pipe']});
+  const exit=once(child,'exit'),lines=readline.createInterface({input:child.stdout});let browser,errors='';child.stderr.on('data',chunk=>errors+=chunk);
+  try{
+    const [line]=await once(lines,'line'),{origin,token}=JSON.parse(line);
+    const api=async(action,data={})=>(await (await fetch(origin+'/api/'+action,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(data)})).json());
+    browser=await chromium.launch({executablePath:process.env.LANTERN_CHROMIUM||'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
+    const page=await browser.newPage({viewport:{width:1320,height:1020},acceptDownloads:true}),pageErrors=[];page.on('pageerror',e=>pageErrors.push(e.message));
+    await page.goto(origin+'/#key='+token);await page.waitForFunction(()=>!document.getElementById('gateway-conversion').disabled);
+    await page.locator('#gateway-conversion').click();await page.locator('#conversion-prepare').click();await page.locator('#conversion-result:not([hidden])').waitFor();
+    assert.match(await page.locator('#conversion-status').textContent(),/2\.9\.6/);assert.equal(await page.getByRole('button',{name:'Flash automatique indisponible',exact:true}).isDisabled(),true);
+    let downloading=page.waitForEvent('download');await page.locator('#conversion-guide').click();const guide=await downloading;assert.match(await fs.readFile(await guide.path(),'utf8'),/Essayer Ubuntu/);
+    downloading=page.waitForEvent('download');await page.locator('#conversion-preflight').click();const diagnostic=await downloading,bytes=await fs.readFile(await diagnostic.path());
+    assert.ok((await page.locator('#conversion-hash').textContent()).includes(crypto.createHash('sha256').update(bytes).digest('hex')));
+    await page.locator('#conversion-firmware').fill('2.9.6');assert.equal(await page.locator('#conversion-result').isHidden(),true);
+    await page.locator('#close-conversion').click();
+    const old=(await api('gateway-save-device',{name:'Filament libre',room:'Salon',adapter:'lsc-tuya-light',options:{ip:'127.0.0.1',version:'3.5',profile:'white-v2'},credentials:{deviceId:'owned-test-light',localKey:'0123456789abcdef'}})).result.gatewayResult.devices[0];
+    await page.getByRole('heading',{name:'Filament libre',exact:true}).waitFor();page.once('dialog',d=>d.accept());
+    await page.getByRole('button',{name:'Reprendre après conversion',exact:true}).click();
+    assert.equal(await page.locator('#new-adapter').inputValue(),'openbeken-light');await page.locator('#new-obk-host').fill(fixture.host);await page.locator('#new-obk-password').fill(fixture.password);
+    await page.locator('#new-test').click();await page.waitForFunction(()=>document.getElementById('new-test-result').textContent.includes('lecture réussies'));assert.deepEqual(fixture.writes,[]);
+    await page.locator('#new-save').click();await page.locator('#device-dialog').waitFor({state:'hidden'});
+    const current=(await api('gateway-state')).result.gatewayResult;assert.equal(current.devices[0].id,old.id);assert.equal(current.devices[0].adapter,'openbeken-light');assert.ok(!JSON.stringify(current).includes(fixture.password));assert.ok(!JSON.stringify(current).includes('private-network'));
+    await page.getByLabel('Blanc de Filament libre',{exact:true}).fill('350');await page.getByRole('button',{name:'Régler le blanc',exact:true}).click();await page.waitForFunction(()=>!document.getElementById('gateway-toggle').disabled);assert.equal(fixture.ct,350);
+    await page.locator('#gateway-toggle').click();await page.waitForFunction(()=>document.getElementById('gateway-toggle').textContent==='Désactiver Maison'&&!document.getElementById('gateway-toggle').disabled);
+    assert.equal(await page.locator('#gateway-conversion').isDisabled(),true);assert.equal((await api('gateway-conversion-plan',{reference:'970709',firmware:'1.1.6'})).ok,false);
+    assert.equal(await page.getByLabel('Blanc de Filament libre',{exact:true}).isDisabled(),true);
+    await page.locator('#gateway-toggle').click();await page.waitForFunction(()=>!document.getElementById('gateway-conversion').disabled);
+    await page.locator('#gateway-conversion').click();await page.locator('#conversion-prepare').click();await page.locator('#conversion-result:not([hidden])').waitFor();
+    await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
+    assert.deepEqual(pageErrors,[]);
+  }finally{if(browser)await browser.close();lines.close();child.kill('SIGTERM');await exit;await fixture.close();assert.equal(errors,'');}
+});
+
 test('desktop installation: add and edit a real HTTP light, Home locks API and UI, encrypted backup restores the same identity', {timeout:90000},async()=>{
   const http=require('node:http');let relayOn=false;const writes=[];
   const relay=http.createServer((request,response)=>{const url=new URL(request.url,'http://localhost');if(url.searchParams.has('turn')){relayOn=url.searchParams.get('turn')==='on';writes.push(relayOn);}response.end(JSON.stringify({ison:relayOn}));});

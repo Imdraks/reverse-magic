@@ -13,6 +13,7 @@ const {validatePatch,DEFAULT_STATE}=require('../homekit/light-engine');
 const {loadLightStorage}=require('../homekit/storage');
 const {ProfileStore}=require('./profile-store');
 const {discoverLsc}=require('./lsc-discovery');
+const {conversionPlan}=require('./conversion');
 const scrypt=promisify(crypto.scrypt);
 const MAX=2*1024*1024;
 class UserError extends Error {}
@@ -51,9 +52,10 @@ class DesktopManager {
   observe(rows){for(const row of rows){const previous=this.health.get(row.id)||{};this.health.set(row.id,{online:row.online,lastConnection:row.online&&!previous.online?this.clock():previous.lastConnection||null,profileWarning:Boolean(row.profileWarning)});if(row.online!==previous.online)this.event(row.online?'Éclairage connecté.':'Éclairage indisponible.');if(row.profileWarning&&!previous.profileWarning)this.event('Réglage appliqué, mais profil non enregistré. Vérifiez le stockage.');}}
   async snapshot(){const project=await this.load(),external=!this.running&&await this.external(project);return {
     available:true,active:Boolean(this.running||external),external,config:project.config,rooms:project.rooms,
-    devices:await Promise.all(project.config.devices.map(async device=>({...device,room:project.rooms[device.id]||'Sans pièce',...(this.health.get(device.id)||{online:null,lastConnection:null}),fields:Object.keys(adapters[device.adapter].describe?.(device.options)?.fields||DEFAULT_STATE),...await this.profileSnapshot(project,device)}))),
+    devices:await Promise.all(project.config.devices.map(async device=>({...device,room:project.rooms[device.id]||'Sans pièce',...(this.health.get(device.id)||{online:null,lastConnection:null}),fields:Object.keys(adapters[device.adapter].describe?.(device.options)?.fields||DEFAULT_STATE),temperatureRange:this.temperatureRange(device),...await this.profileSnapshot(project,device)}))),
     logs:this.logs,profiles:Object.keys(LIGHTS),directory:this.directory,serviceUnit:this.serviceUnit(),
   };}
+  temperatureRange(device){const field=adapters[device.adapter].describe?.(device.options)?.fields.colorTemperature;return field?{min:field.min,max:field.max}:undefined;}
   async profileSnapshot(project,device){
     try{
       const directory=path.join(this.storage(project),'devices',device.id);
@@ -68,10 +70,11 @@ class DesktopManager {
     if(!device.name)fail('Donnez un nom à votre éclairage.');
     if(!Object.hasOwn(adapters,device.adapter))fail('Type d’éclairage inconnu.');
     if(data.credentials){
-      if(device.adapter!=='lsc-tuya-light'&&device.adapter!=='shelly-gen1-relay')fail('Identifiants inattendus.');
+      if(!['lsc-tuya-light','shelly-gen1-relay','openbeken-light'].includes(device.adapter))fail('Identifiants inattendus.');
+      if(device.adapter==='openbeken-light'&&(typeof data.credentials.password!=='string'||!data.credentials.password||Buffer.byteLength(data.credentials.password)>32))fail('Mot de passe OpenBeken attendu : 1 à 32 octets.');
       if(device.adapter==='lsc-tuya-light'&&(!/^[A-Za-z0-9_-]{6,64}$/.test(data.credentials.deviceId)||typeof data.credentials.localKey!=='string'||data.credentials.localKey.length!==16||Buffer.byteLength(data.credentials.localKey)!==16))fail('LSC : identifiant invalide ou clé locale différente de 16 octets.');
       const prefix='LANTERN_'+crypto.randomBytes(8).toString('hex').toUpperCase();
-      const fields=device.adapter==='lsc-tuya-light'?[['deviceId','deviceIdEnv','ID'],['localKey','localKeyEnv','KEY']]:[['username','usernameEnv','USER'],['password','passwordEnv','PASS']];
+      const fields=device.adapter==='lsc-tuya-light'?[['deviceId','deviceIdEnv','ID'],['localKey','localKeyEnv','KEY']]:device.adapter==='openbeken-light'?[['password','passwordEnv','PASS']]:[['username','usernameEnv','USER'],['password','passwordEnv','PASS']];
       for(const [source,target,suffix] of fields){const value=data.credentials[source];if(typeof value!=='string'||!value||value.length>256)fail('Identifiants incomplets.');device.options[target]=prefix+'_'+suffix;project.secrets[prefix+'_'+suffix]=value;}
     }
     if(existing)project.config.devices=project.config.devices.filter(d=>d.id!==existing.id);
@@ -110,7 +113,12 @@ class DesktopManager {
         const gateway=this.gatewayFactory(project.config,this.storage(project),{onStatus:rows=>this.observe(rows),onExit:()=>{if(this.running===gateway){this.running=null;this.event('Le pont s’est arrêté. Vérifiez les connexions puis réactivez Maison.');}}});this.running=gateway;
         try{this.startup=gateway.start();await this.startup;if(this.closed)throw Error();this.event('Maison activé. Commandes directes et modifications verrouillées.');}catch{await gateway.stop();this.running=null;fail('Impossible de démarrer Maison. Vérifiez le port 51828, les identifiants et les autres ponts actifs.');}finally{this.startup=null;}
       }else if(action==='save-device'){
-        this.build(data,project);this.prune(project);await this.save(project);this.event('Éclairage enregistré. Réactivez Maison pour le retrouver dans le pont.');
+        const previous=project.config.devices.find(device=>device.id===data.id),device=this.build(data,project);
+        if(previous&&previous.adapter!==device.adapter){
+          if(previous.adapter!=='lsc-tuya-light'||device.adapter!=='openbeken-light')fail('Changement de protocole non pris en charge.');
+          await this.test(device,project,false,false);
+        }
+        this.prune(project);await this.save(project);this.event('Éclairage enregistré. Réactivez Maison pour le retrouver dans le pont.');
       }else if(action==='remove-device'){
         if(!project.config.devices.some(d=>d.id===data.id))fail('Éclairage introuvable.');
         project.config.devices=project.config.devices.filter(d=>d.id!==data.id);delete project.rooms[data.id];this.prune(project);await this.save(project);this.health.delete(data.id);this.event('Éclairage retiré du pont.');
@@ -123,6 +131,8 @@ class DesktopManager {
         try{return await this.discovery({signal:this.discoveryAbort.signal});}
         catch{fail(this.closed?'Recherche annulée.':'Découverte indisponible. Vérifiez les autorisations réseau et les ports UDP 6666, 6667 et 7000.');}
         finally{this.discoveryAbort=null;}
+      }else if(action==='conversion-plan'){
+        try{return await conversionPlan(data);}catch{fail('Préparation indisponible. Vérifiez référence, version et fichiers du paquet complet.');}
       }else if(action==='refresh-devices'){
         await this.batch(project.config.devices,async device=>{try{await this.test(device,project);this.observe([{id:device.id,online:true}]);}catch{this.observe([{id:device.id,online:false}]);}});
       }else if(action==='apply-group'){

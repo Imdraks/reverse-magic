@@ -21,6 +21,12 @@ Le statut correspond à la dernière connexion vérifiée pendant cette session.
 
 Dans l’assistant LSC, la recherche réseau passive peut remplir l’IP, l’identifiant et la version Tuya d’un éclairage déjà associé au Wi-Fi. L’import local d’un fichier TinyTuya `devices.json` peut remplir sa clé sans la recopier. Vérifier le profil par l’inspection des DP, tester puis enregistrer. L’ajout et la recherche restent verrouillés quand Maison fonctionne. L’activation d’une ampoule neuve et la récupération des clés depuis le compte LSC restent à réaliser. Voir [le parcours détaillé](LSC.md#retrouver-une-ampoule-depuis-lantern).
 
+## Firmware libre et Windows/Android
+
+**Préparer une conversion**, dans Le pont, fournit un guide Windows → clé USB Linux → navigateur Android et un diagnostic Linux téléchargeable avec empreinte SHA-256. Le diagnostic ne modifie pas le réseau et ne contacte pas l’ampoule. Il ne certifie pas un profil et n’active jamais le flash. Pour la 970709 en 1.1.6, la correspondance matérielle reste à confirmer. Voir [le parcours détaillé](CONVERSION-LSC.md).
+
+Après une conversion réalisée et une configuration matérielle correcte, ajouter **OpenBeken — éclairage local**, ou utiliser **Reprendre après conversion** sur la carte LSC existante. Une lecture OpenBeken réelle est obligatoire avant ce remplacement ; l’identifiant et la pièce sont conservés. Les réglages de blanc sont disponibles sur les cartes des appareils qui exposent cette fonction. Les préparations et modifications restent bloquées quand Maison est actif. [Fonctions et limites OpenBeken](OPENBEKEN.md).
+
 ## Démarrer automatiquement
 
 Dans **Réglages**, activer **Démarrer Maison à l’ouverture de session**. Windows lance `LanternDirect.exe --desktop-homekit` ; fermer la fenêtre laisse le pont dans la zone de notification. Linux crée un raccourci d’autostart XDG qui lance `./lantern gui --homekit`. Cela nécessite une session graphique ; ce n’est pas un service de démarrage du Pi. Garder la machine allumée, sans veille, à portée des appareils Bluetooth.

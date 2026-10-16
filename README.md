@@ -4,13 +4,15 @@
 
 Le projet se concentre sur l’éclairage : ampoules, rubans, luminaires et contrôleurs/dimmers. La passerelle réunit plusieurs protocoles. Le PC Windows ou le Pi/Linux reste allumé chez vous, communique avec les éclairages et les expose à Maison/Siri via HomeKit IP. Un seul appairage pour les accessoires du nouveau pont. Aucune application mobile supplémentaire nécessaire.
 
+Une voie de conversion vers un firmware libre est désormais préparée dans l’interface : **Préparer une conversion** fournit un guide Windows → clé USB Linux → Android. Le flash n’est pas automatisé : la variante 970709 en 1.1.6 reste à confirmer. Après conversion réelle, un pilote OpenBeken local prend en charge les éclairages blancs. [Parcours et limites](docs/CONVERSION-LSC.md).
+
 ## Installer
 
-[**Télécharger v0.8.2 — ajout LSC guidé, version de test**](https://github.com/Imdraks/reverse-magic/releases/tag/v0.8.2)
+[**Télécharger v0.9.0 — OpenBeken et préparation de conversion, version de test**](https://github.com/Imdraks/reverse-magic/releases/tag/v0.9.0)
 
-- **Windows** : [installateur](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.2/LanternDirect-Setup.exe) ou [paquet portable complet](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.2/LanternDirect-Windows-HomeKit.zip).
-- **Raspberry Pi OS 64 bits** : [ARM64](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.2/LanternDirect-Linux-arm64.tar.gz), installation terminal et service sans écran.
-- **PC Linux** : [x64](https://github.com/Imdraks/reverse-magic/releases/download/v0.8.2/LanternDirect-Linux-x64.tar.gz), terminal, service et interface locale.
+- **Windows** : [installateur](https://github.com/Imdraks/reverse-magic/releases/download/v0.9.0/LanternDirect-Setup.exe) ou [paquet portable complet](https://github.com/Imdraks/reverse-magic/releases/download/v0.9.0/LanternDirect-Windows-HomeKit.zip).
+- **Raspberry Pi OS 64 bits** : [ARM64](https://github.com/Imdraks/reverse-magic/releases/download/v0.9.0/LanternDirect-Linux-arm64.tar.gz), installation terminal et service sans écran.
+- **PC Linux** : [x64](https://github.com/Imdraks/reverse-magic/releases/download/v0.9.0/LanternDirect-Linux-x64.tar.gz), terminal, service et interface locale.
 
 Les noms techniques `LanternDirect` et les dossiers de données sont conservés pour faciliter les mises à jour. L’installateur contient Node et le pont ; le runtime .NET est inclus. Sous Linux, installer Python/BlueZ selon [le guide](linux/README.md). WebView2 est nécessaire pour le GUI Windows moderne.
 
@@ -43,6 +45,7 @@ Sous Windows, depuis le dossier installé : `node.exe gateway/cli.js init`, puis
 |---|---|---|
 | Magic Lantern BLE | Contrôleurs FFF0/FFF3 compatibles avec [le protocole analysé](docs/protocols/magic-lantern.md) | Allumage, luminosité, couleur ; correction GRB |
 | Shelly Gen 1 Relay | Relais pour éclairage, API HTTP locale `/relay/<canal>` | Marche/arrêt, lecture de l’état physique |
+| OpenBeken HTTP local | Éclairages déjà convertis et configurés | Marche/arrêt, luminosité et blanc réglable selon le profil |
 | LSC Smart Connect / Tuya LAN | Éclairages Wi-Fi avec schéma DP compatible, Tuya 3.1/3.3/3.4/3.5 | Lumière, luminosité, couleur et blanc réglable selon le profil |
 
 Chaque marque/protocole demande un adaptateur ; Zigbee nécessite par exemple une radio ou passerelle adaptée. Les produits sans rapport avec l’éclairage sont hors périmètre. Les effets RGBIC et la musique restent propres au module LED.

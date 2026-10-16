@@ -4,7 +4,13 @@ const { MagicLantern } = require('./adapters/magic-lantern');
 const { ShellyGen1 } = require('./adapters/shelly-gen1');
 const {LscTuya,description}=require('./adapters/lsc-tuya');
 const lsc=require('./adapters/lsc-profiles');
+const openbeken=require('./adapters/openbeken-light');
 const adapters = Object.freeze({
+  'openbeken-light': {
+    name:'OpenBeken — éclairage local',transport:'Wi-Fi / HTTP local',capability:'white-light',manufacturer:'OpenBeken',
+    options:['host','profile','passwordEnv'],validate:openbeken.validate,describe:openbeken.description,
+    create:device=>new openbeken.OpenBekenLight(device.options),
+  },
   'magic-lantern-ble': {
     name: 'Magic Lantern FFF0 / FFF3', transport: 'Bluetooth LE', capability: 'rgb-light', manufacturer: 'Magic Lantern',
     options: ['address','adapter'],

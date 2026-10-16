@@ -1,6 +1,7 @@
 'use strict';
 let editingDevice=null,selectedRoom='*',gatewaySignature='',backupMode='backup';
 let lscImports=[],lscSetupGeneration=0;
+let currentConversion=null,conversionGeneration=0;
 const textElement=(tag,text,className)=>Object.assign(document.createElement(tag),{textContent:text,...(className?{className}:{})});
 const gatewayLocked=()=>Boolean(state.bridge||state.gateway?.active);
 async function gatewayAction(action,data={}){const response=await act('gateway-'+action,data);return response?.gatewayResult;}
@@ -18,7 +19,9 @@ function renderGateway(){
   $('gateway-toggle').textContent=gateway.active?'Désactiver Maison':'Activer Maison';
   $('gateway-toggle').disabled=pending||!gateway.available||Boolean(state.bridge)||gateway.external||(!devices.length&&!gateway.active);
   $('gateway-pairing').disabled=pending||!gateway.active||gateway.external;
-  for(const id of ['gateway-add','gateway-refresh','gateway-save-name','gateway-name','gateway-backup','gateway-restore','group-on','group-off'])$(id).disabled=pending||locked||!gateway.available;
+  for(const id of ['gateway-add','gateway-conversion','gateway-refresh','gateway-save-name','gateway-name','gateway-backup','gateway-restore','group-on','group-off'])$(id).disabled=pending||locked||!gateway.available;
+  for(const id of ['conversion-prepare','conversion-reference','conversion-firmware'])$(id).disabled=pending||locked;
+  for(const id of ['conversion-guide','conversion-preflight'])$(id).disabled=pending||locked||!currentConversion;
   if(!devices.length){$('group-on').disabled=true;$('group-off').disabled=true;}
   $('gateway-autostart').disabled=pending||!gateway.available||Boolean(state.bridge);
   $('gateway-autostart').checked=Boolean(state.autostart);
@@ -29,6 +32,7 @@ function renderGateway(){
   if(document.activeElement!==$('gateway-name'))$('gateway-name').value=gateway.config?.name||'Lantern Bridge';
   if(locked&&$('device-dialog').open){$('device-dialog').close();clearCredentials();toast('Maison est actif. Désactivez-le avant de modifier les appareils.');}
   if(locked&&$('backup-dialog').open){$('backup-dialog').close();$('backup-form').reset();}
+  if(locked&&$('conversion-dialog').open)$('conversion-dialog').close();
   for(const id of ['lsc-discover','lsc-import-file','lsc-import-device'])$(id).disabled=pending||locked;
   for(const button of $('lsc-discovery-results').querySelectorAll('button'))button.disabled=pending||locked;
   const signature=JSON.stringify([devices,locked,pending,selectedRoom,gateway.logs]);
@@ -45,7 +49,7 @@ function renderGateway(){
     tile.innerHTML=icon(device.adapter==='magic-lantern-ble'?'bluetooth':'sun');const title=textElement('div','');title.append(textElement('h3',device.name),textElement('p',device.room));header.append(tile,title);card.append(header);
     card.append(textElement('p',device.online===true?(gateway.active?'Disponible':'Connexion vérifiée'):device.online===false?'Indisponible':'Connexion à vérifier','device-health '+(device.online?'online':'')));
     card.append(textElement('small',device.lastConnection?'Dernière connexion : '+new Date(device.lastConnection).toLocaleString('fr-FR'):'Aucune connexion confirmée pendant cette session.'));
-    card.append(textElement('p',device.adapter==='lsc-tuya-light'?'LSC / Tuya · Wi-Fi local':device.adapter==='magic-lantern-ble'?'Magic Lantern · Bluetooth':'Shelly Gen 1 · éclairage','footnote'));
+    card.append(textElement('p',device.adapter==='lsc-tuya-light'?'LSC / Tuya · Wi-Fi local':device.adapter==='openbeken-light'?'OpenBeken · éclairage local':device.adapter==='magic-lantern-ble'?'Magic Lantern · Bluetooth':'Shelly Gen 1 · éclairage','footnote'));
     if(device.profileError||device.profileWarning)card.append(textElement('p',device.profileError||'Le dernier profil n’a pas pu être enregistré. Vérifiez le stockage.','profile-note'));
     if(device.profile){const memory=device.profile,kind=memory.mode==='colour'?'couleur':memory.mode==='white'?'blanc réglable':memory.mode==='relay'?'éclairage':'mode non restituable';card.append(textElement('p',`Profil mémorisé · ${kind}${memory.state.brightness!==undefined?' · '+memory.state.brightness+' %':''} · ${memory.state.on?'allumé':'éteint'}`,'profile-note'));}
     const restore=textElement('button','Rétablir le profil','text-button');restore.disabled=pending||locked||!device.profile?.restorable;restore.onclick=async()=>{if(confirm('Rétablir la dernière consigne mémorisée de « '+device.name+' », y compris son état allumé ou éteint ?')){const result=await gatewayAction('restore-profile',{id:device.id});if(result)toast(result.results.every(x=>x.ok)?'Profil mémorisé rétabli.':'Le profil n’a pas pu être rétabli. Vérifiez la connexion.');}};card.append(restore);
@@ -56,7 +60,12 @@ function renderGateway(){
       const row=textElement('div','','form-row'),label=textElement('label','Luminosité (%)','field'),input=Object.assign(document.createElement('input'),{type:'number',min:'1',max:'100',value:'50'});input.setAttribute('aria-label','Luminosité de '+device.name);input.disabled=pending||locked;label.append(input);const button=textElement('button','Régler','secondary');button.disabled=pending||locked;button.onclick=()=>applyDevice(device.id,{brightness:Number(input.value)});row.append(label,button);card.append(row);
     }
     if(device.fields.includes('hue')){const label=textElement('label','Choisir une couleur','setting-line'),input=Object.assign(document.createElement('input'),{type:'color',value:'#ffb340'});input.setAttribute('aria-label','Couleur de '+device.name);input.disabled=pending||locked;input.onchange=()=>applyDevice(device.id,{...rgbToHsv(input.value),on:true});label.append(input);card.append(label);}
+    if(device.fields.includes('colorTemperature')&&device.temperatureRange){
+      const range=device.temperatureRange,row=textElement('div','','form-row'),label=textElement('label','Blanc (mireds)','field'),input=Object.assign(document.createElement('input'),{type:'number',min:String(range.min),max:String(range.max),step:'1',value:String(Math.round((range.min+range.max)/2))});input.setAttribute('aria-label','Blanc de '+device.name);input.disabled=pending||locked;label.append(input);
+      const button=textElement('button','Régler le blanc','secondary');button.disabled=pending||locked;button.onclick=()=>applyDevice(device.id,{colorTemperature:Number(input.value)});row.append(label,button);card.append(row);
+    }
     const manage=textElement('div','','device-actions');
+    if(device.adapter==='lsc-tuya-light'){const button=textElement('button','Reprendre après conversion','text-button');button.disabled=pending||locked;button.onclick=()=>{if(confirm('Votre ampoule est-elle déjà convertie et configurée sous OpenBeken ? Lantern vérifiera la lecture avant de remplacer le protocole, en conservant son identifiant.'))openDevice(device,true);};manage.append(button);}
     for(const [name,handler] of [['Modifier',()=>openDevice(device)],['Tester',async()=>{const result=await gatewayAction('test-device',{id:device.id});if(result)toast(result.message);}],['Retirer',async()=>{if(confirm('Retirer « '+device.name+' » du pont ? Ses automatismes Maison pourront nécessiter une adaptation.'))await gatewayAction('remove-device',{id:device.id});}]]){const button=textElement('button',name,'text-button');button.disabled=pending||locked;button.onclick=handler;manage.append(button);}card.append(manage);$('gateway-devices').append(card);
   }
   $('gateway-logs').replaceChildren();
@@ -65,17 +74,19 @@ function renderGateway(){
 }
 function rgbToHsv(hex){const [r,g,b]=hex.slice(1).match(/../g).map(v=>parseInt(v,16)/255),max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min;let hue=0;if(d)hue=max===r?((g-b)/d)%6:max===g?(b-r)/d+2:(r-g)/d+4;return {hue:(hue*60+360)%360,saturation:max?d/max*100:0};}
 async function applyDevice(id,patch){const result=await gatewayAction('apply',{id,patch});if(result)toast(result.results.every(x=>x.ok)?'Commande confirmée.':'Commande non confirmée. Vérifiez la connexion.');}
-function clearCredentials(){for(const id of ['new-device-id','new-local-key','new-username','new-password','lsc-import-file'])$(id).value='';lscImports=[];lscSetupGeneration++;$('lsc-import-device').replaceChildren();$('lsc-import-row').hidden=true;$('lsc-import-status').textContent='';$('lsc-discovery-results').replaceChildren();$('lsc-discovery-status').textContent='';for(const details of $('new-lsc-fields').querySelectorAll('details'))details.open=false;}
-function adapterFields(){const adapter=$('new-adapter').value;$('new-ble-fields').hidden=adapter!=='magic-lantern-ble';$('new-lsc-fields').hidden=adapter!=='lsc-tuya-light';$('new-shelly-fields').hidden=adapter!=='shelly-gen1-relay';}
-function openDevice(device=null){
+function clearCredentials(){for(const id of ['new-device-id','new-local-key','new-username','new-password','new-obk-password','lsc-import-file'])$(id).value='';lscImports=[];lscSetupGeneration++;$('lsc-import-device').replaceChildren();$('lsc-import-row').hidden=true;$('lsc-import-status').textContent='';$('lsc-discovery-results').replaceChildren();$('lsc-discovery-status').textContent='';for(const details of $('new-lsc-fields').querySelectorAll('details'))details.open=false;}
+function adapterFields(){const adapter=$('new-adapter').value;$('new-ble-fields').hidden=adapter!=='magic-lantern-ble';$('new-lsc-fields').hidden=adapter!=='lsc-tuya-light';$('new-shelly-fields').hidden=adapter!=='shelly-gen1-relay';$('new-openbeken-fields').hidden=adapter!=='openbeken-light';}
+function openDevice(device=null,converted=false){
   if(gatewayLocked())return toast('Désactivez Maison avant d’ajouter ou modifier un éclairage.');
   editingDevice=device;$('gateway-device-form').reset();clearCredentials();$('new-test-result').textContent='';$('new-probe-result').hidden=true;
   $('device-dialog-title').textContent=device?'Un éclairage à votre façon.':'Faisons connaissance.';
   $('new-name').value=device?.name||'';$('new-room').value=device?.room==='Sans pièce'?'':device?.room||'';
-  $('new-adapter').value=device?.adapter||'magic-lantern-ble';$('new-adapter').disabled=Boolean(device);
-  const options=device?.options||{};
+  $('new-adapter').value=converted?'openbeken-light':device?.adapter||'magic-lantern-ble';$('new-adapter').disabled=Boolean(device);
+  const options=converted?{}:device?.options||{};
   $('new-address').value=options.address||'';$('new-ip').value=options.ip||'';$('new-version').value=options.version||'3.3';$('new-profile').value=options.profile||'rgbcct-v2';$('new-dps').value=options.dps?JSON.stringify(options.dps):'';
-  $('new-host').value=options.host||'';$('new-channel').value=options.channel??0;adapterFields();$('device-dialog').showModal();$('new-name').focus();
+  $('new-host').value=options.host||'';$('new-channel').value=options.channel??0;
+  $('new-obk-host').value=converted&&device?.options.ip?'http://'+device.options.ip:options.host||'';$('new-obk-profile').value=options.profile==='dimmer'?'dimmer':'cct';
+  adapterFields();$('device-dialog').showModal();$('new-name').focus();
 }
 function draftDevice(){
   const adapter=$('new-adapter').value,same=editingDevice?.adapter===adapter,options=same?{...editingDevice.options}:{},draft={name:$('new-name').value.trim(),room:$('new-room').value.trim(),adapter,options};
@@ -91,6 +102,10 @@ function draftDevice(){
   if(adapter==='shelly-gen1-relay'){
     Object.assign(options,{host:$('new-host').value.trim(),channel:Number($('new-channel').value)});
     const username=$('new-username').value,password=$('new-password').value;if(username||password)draft.credentials={username,password};
+  }
+  if(adapter==='openbeken-light'){
+    Object.assign(options,{host:$('new-obk-host').value.trim(),profile:$('new-obk-profile').value});
+    const password=$('new-obk-password').value;if(password)draft.credentials={password};
   }
   return draft;
 }
@@ -180,4 +195,20 @@ $('backup-form').onsubmit=async event=>{
     if(result){if(backupMode==='backup')downloadFile(result.filename,result.backup);$('backup-dialog').close();toast(backupMode==='backup'?'Sauvegarde chiffrée téléchargée.':'Installation restaurée. Vous pouvez réactiver Maison.');}
   }catch(error){toast(error.message);}
 };
+function resetConversion(){currentConversion=null;conversionGeneration++;$('conversion-result').hidden=true;}
+$('gateway-conversion').onclick=()=>{if(gatewayLocked()||pending)return;resetConversion();$('conversion-dialog').showModal();};
+$('close-conversion').onclick=()=>$('conversion-dialog').close();
+$('conversion-dialog').addEventListener('close',resetConversion);
+$('conversion-reference').oninput=resetConversion;$('conversion-firmware').oninput=resetConversion;
+$('conversion-form').onsubmit=async event=>{
+  event.preventDefault();if(gatewayLocked()||pending)return;
+  resetConversion();const generation=conversionGeneration;
+  const result=await gatewayAction('conversion-plan',{reference:$('conversion-reference').value.trim(),firmware:$('conversion-firmware').value.trim()});
+  if(!result||generation!==conversionGeneration||!$('conversion-dialog').open||gatewayLocked())return;
+  currentConversion=result;$('conversion-title').textContent=result.title;$('conversion-status').textContent=result.message;
+  $('conversion-steps').replaceChildren(...result.steps.map(step=>textElement('li',step)));$('conversion-hash').textContent='SHA-256 du diagnostic : '+result.preflightSHA256;
+  $('conversion-result').hidden=false;renderGateway();
+};
+$('conversion-guide').onclick=()=>{if(currentConversion&&!gatewayLocked()&&!pending)downloadFile('Preparation-LSC-'+currentConversion.reference+'.md',currentConversion.guide,'text/markdown');};
+$('conversion-preflight').onclick=()=>{if(currentConversion&&!gatewayLocked()&&!pending)downloadFile('verifier-conversion.py',currentConversion.preflight,'text/x-python');};
 renderGateway();

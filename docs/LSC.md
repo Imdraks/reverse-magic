@@ -14,6 +14,8 @@ Voir [l’étude et les sources](research/lsc-smart-connect.md). La référence 
 
 ## Configuration depuis l’interface
 
+Pour remplacer le logiciel constructeur et utiliser ensuite OpenBeken, consulter [le parcours Windows/Android](CONVERSION-LSC.md). Cette voie exige un matériel et un profil compatibles ; l’assistant prépare le parcours sans flasher l’ampoule. Le pilote Tuya ci-dessous concerne les appareils qui conservent leur firmware constructeur.
+
 Dans **Le pont**, Maison désactivé, choisir **Ajouter un éclairage → LSC / Tuya**. L’assistant accepte l’IP, la version, le profil et les identifiants locaux, ainsi qu’un mapping DP avancé. Le bouton d’inspection est en lecture seule ; aucun profil candidat n’est appliqué automatiquement. Les identifiants sont conservés dans le stockage privé de cette installation, séparée du CLI. Voir [le guide de l’interface](DESKTOP.md). Les paragraphes suivants décrivent aussi la configuration par variables pour le terminal.
 
 ## Retrouver une ampoule depuis Lantern
