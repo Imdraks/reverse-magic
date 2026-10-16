@@ -80,6 +80,18 @@ try {
     Start-Sleep -Seconds 5
     $app.Refresh()
     if ($app.HasExited) { throw "Installed application exited on startup: $($app.ExitCode)" }
+    Write-Host 'Checking silent uninstall refuses a running application without a modal dialog.'
+    $blockedInfo = [Diagnostics.ProcessStartInfo]::new((Join-Path $root 'Uninstall.exe'))
+    $blockedInfo.UseShellExecute = $false
+    $blockedInfo.ArgumentList.Add('/S')
+    # Direct mode is safe here: the running-app guard must abort before any deletion.
+    $blockedInfo.ArgumentList.Add('_?=' + $root)
+    $blocked = [Diagnostics.Process]::Start($blockedInfo)
+    try {
+        if (-not $blocked.WaitForExit(10000)) { $blocked.Kill($true); throw 'Silent uninstall running-app guard hung' }
+        if ($blocked.ExitCode -ne 5) { throw "Silent uninstall guard returned $($blocked.ExitCode), expected 5" }
+        if (-not (Test-Path (Join-Path $root 'LanternDirect.exe'))) { throw 'Busy uninstall removed the application' }
+    } finally { $blocked.Dispose() }
     for ($i=0; $i -lt 3 -and -not $app.HasExited; $i++) {
         $null = $app.CloseMainWindow()
         Start-Sleep -Seconds 2
@@ -87,6 +99,18 @@ try {
     }
 } finally {
     if (-not $app.HasExited) { Stop-Process -Id $app.Id -Force; $app.WaitForExit() }
+}
+Write-Host 'Checking application and bridge guards have been released.'
+$remainingGuard = $null
+for ($i=0; $i -lt 20; $i++) {
+    try { $remainingGuard = [Threading.Mutex]::OpenExisting('LanternDirect.CurrentUser.' + $env:USERNAME) } catch { $remainingGuard = $null }
+    if ($null -eq $remainingGuard) { break }
+    $remainingGuard.Dispose()
+    Start-Sleep -Milliseconds 250
+}
+if ($null -ne $remainingGuard) {
+    Get-Process -Name LanternDirect -ErrorAction SilentlyContinue | Select-Object Id,ProcessName | Write-Host
+    throw 'Application or bridge mutex still exists after application exit'
 }
 New-Item -ItemType Directory -Path (Join-Path $settings 'homekit\installer-test') -Force | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $settings 'gateway\installer-test') -Force | Out-Null
@@ -100,8 +124,11 @@ Set-Content -Path $pairingFile -Value 'pairing storage preservation test' -NoNew
 $gatewayFile = Join-Path $settings 'gateway\installer-test\preserve.txt'
 Set-Content -Path $gatewayFile -Value 'gateway storage preservation test' -NoNewline
 Write-Host 'Checking uninstall and private storage preservation.'
-$removed = Start-Process -FilePath (Join-Path $root 'Uninstall.exe') -ArgumentList '/S' -Wait -PassThru
-if ($removed.ExitCode -ne 0) { throw 'Uninstaller failed' }
+$removed = Start-Process -FilePath (Join-Path $root 'Uninstall.exe') -ArgumentList '/S' -PassThru
+try {
+    if (-not $removed.WaitForExit(30000)) { $removed.Kill($true); throw 'Silent uninstaller did not exit within 30 seconds' }
+    if ($removed.ExitCode -ne 0) { throw "Uninstaller failed with code $($removed.ExitCode)" }
+} finally { $removed.Dispose() }
 for ($i=0; $i -lt 40 -and (Test-Path (Join-Path $root 'LanternDirect.exe')); $i++) { Start-Sleep -Milliseconds 500 }
 if (Test-Path (Join-Path $root 'LanternDirect.exe')) { throw 'Program was not removed' }
 if (Test-Path $shortcut) { throw 'Start menu shortcut was not removed' }

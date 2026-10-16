@@ -30,20 +30,23 @@ VIAddVersionKey /LANG=1036 "LegalCopyright" "Lantern Bridge"
   System::Call 'kernel32::OpenMutexW(i 0x100000, i 0, w "LanternDirect.CurrentUser.$0") p.r1'
   ${If} $1 != 0
     System::Call 'kernel32::CloseHandle(p r1)'
-    MessageBox MB_OK|MB_ICONINFORMATION "Quittez Lantern Bridge depuis son icône près de l’horloge, puis relancez cette opération. Le pont Maison sera indisponible pendant la mise à jour."
+    MessageBox MB_OK|MB_ICONINFORMATION "Quittez Lantern Bridge depuis son icône près de l’horloge, puis relancez cette opération. Le pont Maison sera indisponible pendant la mise à jour." /SD IDOK
+    SetErrorLevel 5
     Abort
   ${EndIf}
 !macroend
 Function .onInit
   SetRegView 64
   ${IfNot} ${RunningX64}
-    MessageBox MB_OK|MB_ICONSTOP "Lantern Bridge nécessite Windows 64 bits."
+    MessageBox MB_OK|MB_ICONSTOP "Lantern Bridge nécessite Windows 64 bits." /SD IDOK
+    SetErrorLevel 3
     Abort
   ${EndIf}
   ReadRegStr $0 HKLM "SOFTWARE\Microsoft\Windows NT\CurrentVersion" "CurrentBuildNumber"
   IntCmp $0 19041 supported unsupported supported
   unsupported:
-    MessageBox MB_OK|MB_ICONSTOP "Windows 10 version 2004 ou plus récent est nécessaire."
+    MessageBox MB_OK|MB_ICONSTOP "Windows 10 version 2004 ou plus récent est nécessaire." /SD IDOK
+    SetErrorLevel 4
     Abort
   supported:
   !insertmacro CheckRunning
@@ -52,7 +55,8 @@ Function un.onInit
   SetRegView 64
   !insertmacro CheckRunning
   ${If} $INSTDIR != "$LOCALAPPDATA\Programs\LanternDirect"
-    MessageBox MB_OK|MB_ICONSTOP "Lancez la désinstallation depuis son dossier d’installation d’origine."
+    MessageBox MB_OK|MB_ICONSTOP "Lancez la désinstallation depuis son dossier d’installation d’origine." /SD IDOK
+    SetErrorLevel 6
     Abort
   ${EndIf}
 FunctionEnd
