@@ -4,7 +4,7 @@ const path=require('node:path');
 const crypto=require('node:crypto');
 const REPOSITORY='https://github.com/Imdraks/reverse-magic';
 const API='https://api.github.com/repos/Imdraks/reverse-magic/releases?per_page=20';
-const CURRENT='0.10.0';
+const CURRENT='0.11.0';
 const versions=value=>/^v?\d+\.\d+\.\d+$/.test(value)?value.replace(/^v/,'').split('.').map(Number):null;
 function newer(a,b){for(let i=0;i<3;i++){if(a[i]!==b[i])return a[i]>b[i];}return false;}
 function assetName(platform,arch){if(platform==='win32'&&arch==='x64')return 'LanternDirect-Setup.exe';if(platform==='linux'&&['x64','arm64'].includes(arch))return `LanternDirect-Linux-${arch}.tar.gz`;throw Error('Plateforme non prise en charge.');}

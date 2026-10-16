@@ -26,7 +26,7 @@ function announcement(message,remote){
   }catch{return null;}
 }
 async function discoverLsc({duration=8000,signal,ports=PORTS,host='0.0.0.0',onListening,socketFactory=options=>dgram.createSocket(options)}={}){
-  const found=new Map(),sockets=[],unavailable=[];
+  const found=new Map(),conflicts=new Set(),sockets=[],unavailable=[];
   if(signal?.aborted)throw new Error('Recherche annulée.');
   if(!Number.isInteger(duration)||duration<10||duration>10000)throw new Error('Durée de recherche invalide.');
   let finish;
@@ -35,7 +35,7 @@ async function discoverLsc({duration=8000,signal,ports=PORTS,host='0.0.0.0',onLi
   try{
     await Promise.all(ports.map(port=>new Promise(resolve=>{
       const socket=socketFactory({type:'udp4',reuseAddr:true});sockets.push(socket);
-      socket.on('message',(bytes,remote)=>{if(signal?.aborted)return;const device=announcement(bytes,remote);if(device&&(found.size<128||found.has(device.deviceId)))found.set(device.deviceId,device);});
+      socket.on('message',(bytes,remote)=>{if(signal?.aborted)return;const device=announcement(bytes,remote);if(device&&(found.size<128||found.has(device.deviceId))){const previous=found.get(device.deviceId);if(previous&&(previous.ip!==device.ip||previous.version!==device.version))conflicts.add(device.deviceId);found.set(device.deviceId,device);}});
       socket.on('error',()=>{if(!unavailable.includes(port))unavailable.push(port);resolve();if(unavailable.length===ports.length)finish();});
       socket.once('listening',()=>{onListening?.(socket.address());resolve();});
       try{socket.bind(port,host);}catch{unavailable.push(port);resolve();if(unavailable.length===ports.length)finish();}
@@ -43,7 +43,7 @@ async function discoverLsc({duration=8000,signal,ports=PORTS,host='0.0.0.0',onLi
     await done;
     if(signal?.aborted)throw new Error('Recherche annulée.');
     if(unavailable.length===ports.length)throw new Error('Découverte indisponible. Vérifiez les autorisations réseau et les ports UDP 6666, 6667 et 7000.');
-    return {devices:[...found.values()].sort((a,b)=>a.ip.localeCompare(b.ip)),partial:unavailable.length>0,message:found.size?'Appareils Tuya détectés. Choisissez uniquement votre éclairage LSC ; la marque et le type ne sont pas vérifiés.':'Aucune annonce reçue. Vérifiez le réseau local et le pare-feu. Une ampoule non associée au Wi-Fi ne peut pas être détectée ainsi.'};
+    return {devices:[...found.values()].filter(device=>!conflicts.has(device.deviceId)).sort((a,b)=>a.ip.localeCompare(b.ip)),conflicts:[...conflicts],partial:unavailable.length>0,message:found.size?'Appareils Tuya détectés. Les annonces contradictoires sont exclues. Choisissez uniquement votre éclairage LSC ; la marque et le type ne sont pas vérifiés.':'Aucune annonce reçue. Vérifiez le réseau local et le pare-feu. Une ampoule non associée au Wi-Fi ne peut pas être détectée ainsi.'};
   }finally{
     clearTimeout(timer);signal?.removeEventListener('abort',abort);
     await Promise.all(sockets.map(socket=>new Promise(resolve=>{try{socket.close(resolve);}catch{resolve();}})));

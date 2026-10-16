@@ -16,6 +16,8 @@ const {discoverLsc}=require('./lsc-discovery');
 const {conversionPlan}=require('./conversion');
 const {BackupVault,write:durableWrite}=require('./backup-vault');
 const {Updates}=require('./updates');
+const {modelCatalog}=require('./model-catalog');
+const {privateIPv4}=require('./local-address');
 const scrypt=promisify(crypto.scrypt);
 const MAX=2*1024*1024;
 class UserError extends Error {}
@@ -67,6 +69,7 @@ class DesktopManager {
     backup:await this.vault.snapshot().catch(()=>({enabled:false,error:'Sauvegardes automatiques illisibles. Vérifiez le stockage.'})),
     health:{bridge:external?'external':this.running?'running':'stopped',checkedAt:this.clock(),online:[...this.health.values()].filter(row=>row.online).length,offline:[...this.health.values()].filter(row=>row.online===false).length},
     profileCatalog:Object.entries(LIGHTS).map(([id,profile])=>({id,functions:['on','brightness',...(profile.colorFormat?['hue','saturation']:[]),...(profile.dps.temperature?['colorTemperature']:[])],verifiedModel:false})),
+    modelCatalog:modelCatalog(),addressRecovery:this.addressRecovery||null,
   };}
   temperatureRange(device){const field=adapters[device.adapter].describe?.(device.options)?.fields.colorTemperature;return field?{min:field.min,max:field.max}:undefined;}
   async profileSnapshot(project,device){
@@ -115,6 +118,7 @@ class DesktopManager {
         return {code:identity.pincode,image:'data:image/png;base64,'+(await fs.readFile(path.join(folder,'pairing.png'))).toString('base64')};
       }
       if(action==='health-report')return this.healthReport(project);
+      if(action==='model-catalog')return modelCatalog();
       if(action==='update-check'){try{return await this.updates.check({includePrerelease:data.includePrerelease===true});}catch{fail('Vérification indisponible. Le pont local reste utilisable ; réessayez avec Internet.');}}
       if(action==='stop'){
         this.wantRunning=false;clearTimeout(this.restartTimer);this.restartTimer=null;
@@ -123,12 +127,14 @@ class DesktopManager {
       }
       await this.editable(project);
       if(this.closed)fail('Gestionnaire arrêté.');
-      if(['save-device','remove-device','settings','restore','start','update-download'].includes(action)){
+      if(['save-device','remove-device','settings','restore','start','update-download','recover-addresses'].includes(action)){
         try{if(await this.vault.configuration())await this.vault.create(await this.backupPayload());}
         catch{fail('Sauvegarde automatique impossible. Aucune modification effectuée ; vérifiez le stockage et la configuration des sauvegardes.');}
       }
       if(action==='start'){
         if(!project.config.devices.length)fail('Ajoutez au moins un éclairage.');
+        if(project.config.devices.some(device=>device.adapter==='lsc-tuya-light'&&['3.4','3.5'].includes(device.options.version)))this.addressRecovery=await this.recoverAddresses(project,1);
+        if(this.closed)fail('Gestionnaire arrêté.');
         this.wantRunning=true;
         this.environment(project);
         const gateway=this.gatewayFactory(project.config,this.storage(project),{onStatus:rows=>this.observe(rows),onExit:()=>{if(this.running===gateway){this.running=null;this.event('Le processus du pont s’est arrêté.');this.scheduleRestart();}}});this.running=gateway;
@@ -153,6 +159,8 @@ class DesktopManager {
         try{return await this.discovery({signal:this.discoveryAbort.signal});}
         catch{fail(this.closed?'Recherche annulée.':'Découverte indisponible. Vérifiez les autorisations réseau et les ports UDP 6666, 6667 et 7000.');}
         finally{this.discoveryAbort=null;}
+      }else if(action==='recover-addresses'){
+        this.addressRecovery=await this.recoverAddresses(project,8);return {report:this.addressRecovery,state:await this.snapshot()};
       }else if(action==='conversion-plan'){
         try{return await conversionPlan(data);}catch{fail('Préparation indisponible. Vérifiez référence, version et fichiers du paquet complet.');}
       }else if(action==='refresh-devices'){
@@ -189,6 +197,39 @@ class DesktopManager {
     });
   }
   prune(project){const used=new Set(project.config.devices.flatMap(d=>Object.entries(d.options).filter(([key])=>key.endsWith('Env')).map(([,value])=>value)));for(const key of Object.keys(project.secrets))if(!used.has(key))delete project.secrets[key];}
+  async recoverAddresses(project,limit){
+    const devices=project.config.devices.filter(device=>device.adapter==='lsc-tuya-light');
+    if(!devices.length)return {changed:0,remaining:0,results:[],message:'Aucun éclairage Tuya enregistré.'};
+    this.discoveryAbort=new AbortController();let discovery;
+    try{discovery=await this.discovery({signal:this.discoveryAbort.signal});}
+    catch{if(this.closed)fail('Recherche annulée.');return {changed:0,remaining:0,results:[],message:'Découverte indisponible. Adresses conservées ; vérifiez le réseau et le pare-feu.'};}
+    finally{this.discoveryAbort=null;}
+    if(this.closed)fail('Recherche annulée.');
+    let checked=0,changed=0,remaining=0;const results=[];
+    for(const device of devices){
+      const identity=project.secrets[device.options.deviceIdEnv];
+      const matches=(discovery.devices||[]).filter(row=>row.deviceId===identity);
+      if(discovery.conflicts?.includes(identity)||matches.length>1){results.push({id:device.id,status:'ambiguous'});continue;}
+      const candidate=matches[0];if(!candidate||candidate.ip===device.options.ip)continue;
+      if(!privateIPv4(candidate.ip)||candidate.version!==device.options.version){results.push({id:device.id,status:'incompatible-announcement'});continue;}
+      // 3.1 can return plaintext status without proving knowledge of the key.
+      if(!['3.4','3.5'].includes(device.options.version)){results.push({id:device.id,status:'manual-required'});continue;}
+      if(checked++>=limit){remaining++;continue;}
+      if(this.closed)fail('Recherche annulée.');
+      try{await this.test(device,project,false,false);results.push({id:device.id,status:'original-reachable'});continue;}catch{}
+      if(this.closed)fail('Recherche annulée.');
+      const proposed={...device,options:{...device.options,ip:candidate.ip}};
+      try{await this.test(proposed,project,false,false);}catch{results.push({id:device.id,status:'verification-failed'});continue;}
+      if(this.closed)fail('Recherche annulée.');
+      // Validate conflicts against all other targets before persisting anything.
+      const updated=structuredClone(project);updated.config.devices.find(row=>row.id===device.id).options.ip=candidate.ip;
+      try{validateProject(updated);}catch{results.push({id:device.id,status:'target-conflict'});continue;}
+      await this.editable(project);await this.save(updated);device.options.ip=candidate.ip;changed++;this.observe([{id:device.id,online:true}]);results.push({id:device.id,status:'updated'});
+    }
+    if(changed)this.event('Adresse locale retrouvée et vérifiée. Identité Maison et profil conservés.');
+    const attention=results.filter(row=>!['updated','original-reachable'].includes(row.status)).length;
+    return {changed,remaining,partial:Boolean(discovery.partial),results,message:`${changed} adresse(s) mise(s) à jour après vérification ; ${attention} cas à vérifier manuellement (clé, protocole ou annonces contradictoires) ; ${remaining} à examiner lors d’une prochaine recherche.`+(discovery.partial?' Certains ports de découverte sont indisponibles.':'')};
+  }
   async healthReport(project){
     const external=!this.running&&await this.external(project);
     return {format:'lantern-health-1',generatedAt:this.clock(),bridge:external?'external':this.running?'running':'stopped',

@@ -1,14 +1,14 @@
-Cette version améliore le fonctionnement quotidien du pont d’éclairage Windows, Linux et Raspberry Pi, et protège les opérations de maintenance.
+Cette version facilite le retour des ampoules LSC/Tuya dont l’adresse IP a changé et ajoute un catalogue de modèles et de profils dans l’interface Windows/Linux.
 
-- Ajout guidé : informations propres au protocole, inspection LSC et connexion revérifiée avant enregistrement dans l’interface.
-- Diagnostic privé téléchargeable même avec Maison actif : états, dernières vérifications et conseils, sans noms, adresses, identifiants ni clés. Les états d’un service externe restent explicitement indisponibles dans la fenêtre.
-- Surveillance avec quatre lectures simultanées maximum et délai progressif de 5 à 60 secondes pour les appareils indisponibles. Reprise du processus HomeKit après incident ; les modifications restent verrouillées jusqu’à désactivation de Maison.
-- Service Linux/Pi utilisateur installable avec `./lantern desktop-service --install`, sans sudo. Le démarrage sans session nécessite la configuration de linger par un administrateur. Windows conserve le mode près de l’horloge et l’autostart de session.
-- Sauvegardes automatiques avant modification, activation et mise à jour ; rotation sur sept fichiers. Seule une clé publique RSA reste sur le pont. La clé privée de récupération est téléchargée chiffrée par une phrase de passe ; la conserver séparément avec les sauvegardes. Restauration intégrée et maintien de l’identité Maison.
-- Téléchargement des paquets officiels adapté à la plateforme, contrôle des redirections HTTPS, taille, SHA-256 et digest GitHub lorsqu’il existe. Maison arrêté et sauvegarde requise. Installation manuelle après fermeture du pont ; conserver l’ancien paquet pour revenir en arrière. Les préversions nécessitent un choix explicite.
-- Adresses Wi-Fi limitées aux IPv4 locales, pas de domaines ni d’adresses publiques pour les pilotes. Protection de la page locale renforcée ; retrait des anciennes clés de l’environnement et écritures de configuration synchronisées.
-- Conversion LSC : comparaison des déclarations avec le profil documenté, écarts visibles, sources et rapport exportable. Aucun exploit ou flash automatique ; la 970709 en 1.1.6 reste non validée sur matériel.
+- **Retrouver les adresses LSC**, Maison arrêté : écoute des annonces locales, rapprochement avec les identifiants enregistrés, vérification de l’ancienne adresse puis lecture authentifiée à la nouvelle adresse. Les annonces seules ne suffisent jamais. Correction automatique limitée à Tuya 3.4/3.5 ; aucune commande lumineuse.
+- Avant chaque activation du pont, y compris en service, une recherche peut corriger une adresse candidate. La recherche manuelle examine au maximum huit candidats par passage. Aucun changement d’adresse pendant le fonctionnement de Maison. Les autres protocoles et pilotes nécessitent une correction manuelle.
+- Les annonces contradictoires, versions différentes, clés invalides, IP publiques et conflits de cible sont refusés. Les noms, pièces, profils, clés et identités Maison restent inchangés. Une sauvegarde préalable est créée si les sauvegardes automatiques sont configurées.
+- **Modèles et profils**, consultable avec Maison actif : sources et limites pour les références LSC 970709/3001686 et Action 3208075, et profils Tuya testés sur simulateur. La configuration exige Maison arrêté et ouvre un formulaire à compléter ; aucun appareil n’est ajouté automatiquement.
 
-Les sauvegardes automatiques ne sont pas périodiques pendant le fonctionnement de Maison. Les clés opérationnelles du projet restent protégées par le compte local, sans coffre système. HTTP Shelly/OpenBeken ne chiffre pas le réseau. Les contrôles de téléchargement ne remplacent pas une signature indépendante. Aucun essai sur une ampoule physique n’a été effectué dans le cloud.
+**Aucun modèle physique n’est revendiqué comme validé.** La variante 970709 en 1.1.6 reste à confirmer ; la fiche publiée en 2.9.6 ne certifie pas cet exemplaire. Les DP de la 3208075 restent inconnus. Aucun exploit ou flash n’est exécuté.
 
-Guide détaillé : `docs/FIABILITE-SECURITE.md`. Arrêter Maison, sauvegarder puis quitter Lantern avant de mettre à jour. Conserver la clé de récupération hors du PC et copier aussi les sauvegardes sur un autre support.
+Les fonctions de la version précédente restent disponibles : sauvegardes automatiques chiffrées, diagnostic privé, reprise du pont, service utilisateur Linux/Pi et téléchargement des mises à jour avec vérification d’intégrité.
+
+Validation : échanges TCP Tuya 3.4/3.5 avec simulateurs indépendants, refus de mauvaises clés et d’annonces ambiguës, absence de commandes lumineuses et maintien du profil mémorisé. Parcours Chromium du catalogue et des verrous Maison. Guides : `docs/MODELES-ET-ADRESSES.md` et `docs/FIABILITE-SECURITE.md`.
+
+Arrêter Maison, sauvegarder et quitter Lantern avant installation.

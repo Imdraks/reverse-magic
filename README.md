@@ -10,11 +10,11 @@ L’assistant compare également référence, firmware et module déclaré au ca
 
 ## Installer
 
-[**Télécharger v0.10.0 — Fiabilité et sauvegardes automatiques, version de test**](https://github.com/Imdraks/reverse-magic/releases/tag/v0.10.0)
+[**Télécharger v0.11.0 — Adresses LSC et catalogue de profils, version de test**](https://github.com/Imdraks/reverse-magic/releases/tag/v0.11.0)
 
-- **Windows** : [installateur](https://github.com/Imdraks/reverse-magic/releases/download/v0.10.0/LanternDirect-Setup.exe) ou [paquet portable complet](https://github.com/Imdraks/reverse-magic/releases/download/v0.10.0/LanternDirect-Windows-HomeKit.zip).
-- **Raspberry Pi OS 64 bits** : [ARM64](https://github.com/Imdraks/reverse-magic/releases/download/v0.10.0/LanternDirect-Linux-arm64.tar.gz), installation terminal et service sans écran.
-- **PC Linux** : [x64](https://github.com/Imdraks/reverse-magic/releases/download/v0.10.0/LanternDirect-Linux-x64.tar.gz), terminal, service et interface locale.
+- **Windows** : [installateur](https://github.com/Imdraks/reverse-magic/releases/download/v0.11.0/LanternDirect-Setup.exe) ou [paquet portable complet](https://github.com/Imdraks/reverse-magic/releases/download/v0.11.0/LanternDirect-Windows-HomeKit.zip).
+- **Raspberry Pi OS 64 bits** : [ARM64](https://github.com/Imdraks/reverse-magic/releases/download/v0.11.0/LanternDirect-Linux-arm64.tar.gz), installation terminal et service sans écran.
+- **PC Linux** : [x64](https://github.com/Imdraks/reverse-magic/releases/download/v0.11.0/LanternDirect-Linux-x64.tar.gz), terminal, service et interface locale.
 
 Les noms techniques `LanternDirect` et les dossiers de données sont conservés pour faciliter les mises à jour. L’installateur contient Node et le pont ; le runtime .NET est inclus. Sous Linux, installer Python/BlueZ selon [le guide](linux/README.md). WebView2 est nécessaire pour le GUI Windows moderne.
 
@@ -73,3 +73,7 @@ Les tests couvrent l’appairage HomeKit chiffré réel, le routage de plusieurs
 ### Fiabilité au quotidien
 
 Ajout guidé avec connexion revérifiée, diagnostic privé disponible dans Maison, lectures de fond limitées et reprise progressive. Sauvegardes automatiques chiffrées avant modification avec clé de récupération séparée, service utilisateur Linux/Pi installable et téléchargements officiels contrôlés par taille et SHA-256. [Fonctionnement, installation et limites de sécurité](docs/FIABILITE-SECURITE.md).
+
+### Adresses LSC et catalogue
+
+**Retrouver les adresses LSC**, Maison arrêté, associe les annonces aux identifiants enregistrés et vérifie les clés en Tuya 3.4/3.5 avant correction. Une adresse candidate est également examinée avant chaque activation du pont. **Modèles et profils** distingue variantes documentées, profils testés sur simulateur et validation physique (aucun modèle physique validé à ce jour). [Parcours, limites et sources](docs/MODELES-ET-ADRESSES.md).

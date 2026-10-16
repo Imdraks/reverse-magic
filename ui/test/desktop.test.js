@@ -108,6 +108,11 @@ test('conversion assistant exports a blocked preparation plan and resumes a real
     browser=await chromium.launch({executablePath:process.env.LANTERN_CHROMIUM||'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
     const page=await browser.newPage({viewport:{width:1320,height:1020},acceptDownloads:true}),pageErrors=[];page.on('pageerror',e=>pageErrors.push(e.message));
     await page.goto(origin+'/#key='+token);await page.waitForFunction(()=>!document.getElementById('gateway-conversion').disabled);
+    await page.locator('#gateway-catalog').click();await page.locator('#catalog-dialog[open]').waitFor();
+    assert.match(await page.locator('#catalog-note').textContent(),/Aucun modèle physique/);
+    await page.locator('#catalog-models button').first().click();await page.locator('#device-dialog[open]').waitFor();
+    assert.equal(await page.locator('#new-adapter').inputValue(),'lsc-tuya-light');assert.equal(await page.locator('#new-profile').inputValue(),'white-v2');
+    assert.match(await page.locator('#new-test-result').textContent(),/candidat/);await page.locator('#close-device').click();
     await page.locator('#gateway-conversion').click();await page.locator('#conversion-prepare').click();await page.locator('#conversion-result:not([hidden])').waitFor();
     assert.match(await page.locator('#conversion-status').textContent(),/2\.9\.6/);assert.equal(await page.getByRole('button',{name:'Flash automatique indisponible',exact:true}).isDisabled(),true);
     assert.match(await page.locator('#conversion-candidates').textContent(),/Écart avec le catalogue/);
@@ -136,6 +141,8 @@ test('conversion assistant exports a blocked preparation plan and resumes a real
     await page.getByLabel('Blanc de Filament libre',{exact:true}).fill('350');await page.getByRole('button',{name:'Régler le blanc',exact:true}).click();await page.waitForFunction(()=>!document.getElementById('gateway-toggle').disabled);assert.equal(fixture.ct,350);
     await page.locator('#gateway-toggle').click();await page.waitForFunction(()=>document.getElementById('gateway-toggle').textContent==='Désactiver Maison'&&!document.getElementById('gateway-toggle').disabled);
     assert.equal(await page.locator('#gateway-conversion').isDisabled(),true);assert.equal((await api('gateway-conversion-plan',{reference:'970709',firmware:'1.1.6'})).ok,false);
+    assert.equal((await api('gateway-recover-addresses')).ok,false);
+    await page.locator('#gateway-catalog').click();await page.locator('#catalog-dialog[open]').waitFor();assert.equal(await page.locator('#catalog-models button').first().isDisabled(),true);await page.locator('#close-catalog').click();
     assert.equal(await page.getByLabel('Blanc de Filament libre',{exact:true}).isDisabled(),true);
     await page.locator('#gateway-toggle').click();await page.waitForFunction(()=>!document.getElementById('gateway-conversion').disabled);
     await page.locator('#gateway-conversion').click();await page.locator('#conversion-prepare').click();await page.locator('#conversion-result:not([hidden])').waitFor();

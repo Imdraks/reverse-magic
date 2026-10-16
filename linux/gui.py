@@ -113,7 +113,7 @@ class Desktop:
         if self.controller and not self.controller.connected and not self.connect_task and not self.bridge_task and self.connection_issue is None:
             self.connection_issue=issue(ConnectionError('Connexion perdue.'));self.status='Connexion interrompue.'
         from desktop_tools import autostart_enabled
-        return dict(rememberedProfile=self.remembered_profile,profileError=self.profile_error,autostart=autostart_enabled(),gateway=self.gateway_host.state if self.gateway_host else {'available':False,'active':False},version='0.10.0',favorites=favorites,favoritesError=error,canSaveFavorite=self.known and not self.mic and not error,connectionIssue=self.connection_issue,connecting=self.connect_task is not None,connectionAttempt=self.attempt,platform='linux',connected=bool(self.controller and self.controller.connected),device=self.device,deviceName=self.device_name,
+        return dict(rememberedProfile=self.remembered_profile,profileError=self.profile_error,autostart=autostart_enabled(),gateway=self.gateway_host.state if self.gateway_host else {'available':False,'active':False},version='0.11.0',favorites=favorites,favoritesError=error,canSaveFavorite=self.known and not self.mic and not error,connectionIssue=self.connection_issue,connecting=self.connect_task is not None,connectionAttempt=self.attempt,platform='linux',connected=bool(self.controller and self.controller.connected),device=self.device,deviceName=self.device_name,
                     on=self.on,brightness=self.brightness,rgb=self.rgb,mic=self.mic,bridge=self.bridge_task is not None and not self.bridge_task.done(),
                     pairingReady=self.pairing_ready,devices=self.devices,effects=self.effects,status=self.status)
 

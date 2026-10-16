@@ -5,7 +5,7 @@ function createAccessory(engine, { deviceId, name = 'Mes LED', username, pincode
     .setCharacteristic(Characteristic.Manufacturer, 'Lantern Direct')
     .setCharacteristic(Characteristic.Model, 'Magic Lantern Bluetooth')
     .setCharacteristic(Characteristic.SerialNumber, deviceId)
-    .setCharacteristic(Characteristic.FirmwareRevision, '0.10.0');
+    .setCharacteristic(Characteristic.FirmwareRevision, '0.11.0');
   const detach = attachLight(engine, accessory, name);
   return { accessory, publish: () => accessory.publish({ username, pincode, setupID, port, bind, category: Categories.LIGHTBULB, advertiser: MDNSAdvertiser.CIAO }), stop: async () => { detach(); await accessory.unpublish(); } };
 }

@@ -16,6 +16,10 @@ function renderGateway(){
   $('gateway-summary').textContent=gateway.available?`${devices.length} éclairage${devices.length>1?'s':''} · ${new Set(devices.map(d=>d.room)).size} pièce(s) · ${devices.filter(d=>d.online===true).length} connexion(s) vérifiée(s)`:'Le gestionnaire nécessite le paquet complet Lantern Bridge.';
   $('gateway-health-summary').textContent=gateway.external?'Service externe actif ; consultez ses journaux pour les connexions.':`${devices.filter(d=>d.online===true).length} disponible(s), ${devices.filter(d=>d.online===false).length} indisponible(s), ${devices.filter(d=>d.online==null).length} à vérifier. ${gateway.active?'Reconnexion progressive automatique jusqu’à 60 s entre tentatives.':'Activez Maison pour la surveillance continue.'}`;
   for(const id of ['gateway-health-report','gateway-update-check','gateway-update-preview'])$(id).disabled=pending||!gateway.available;
+  $('gateway-catalog').disabled=pending||!gateway.available;
+  $('gateway-recover-addresses').disabled=pending||locked||!gateway.available||!devices.some(device=>device.adapter==='lsc-tuya-light');
+  $('gateway-recovery-result').textContent=gateway.addressRecovery?.message||'';
+  for(const button of $('catalog-models').querySelectorAll('button'))button.disabled=pending||locked;
   for(const id of ['gateway-auto-backup','gateway-auto-backup-enable','gateway-auto-backup-now','gateway-update-download'])$(id).disabled=pending||locked||!gateway.available;
   $('gateway-auto-backup').hidden=Boolean(gateway.backup?.enabled);
   $('gateway-auto-backup-enable').hidden=!recoveryPrepared||Boolean(gateway.backup?.enabled);
@@ -195,6 +199,23 @@ $('gateway-auto-backup').onclick=()=>openBackup('auto');
 $('gateway-auto-backup-enable').onclick=async()=>{if(confirm('Avez-vous conservé le fichier de récupération et sa phrase de passe ailleurs que sur ce PC ? Sans eux, les sauvegardes automatiques seront irrécupérables.')){const result=await gatewayAction('auto-backup-enable',{savedRecovery:true});if(result){recoveryPrepared=false;renderGateway();toast('Sauvegardes automatiques activées.');}}};
 $('gateway-auto-backup-now').onclick=()=>gatewayAction('auto-backup-now');
 $('gateway-health-report').onclick=async()=>{const result=await gatewayAction('health-report');if(result)downloadFile('Lantern-diagnostic.json',JSON.stringify(result,null,2));};
+$('gateway-recover-addresses').onclick=async()=>{const result=await gatewayAction('recover-addresses');if(result)toast(result.report.message);};
+$('close-catalog').onclick=()=>$('catalog-dialog').close();
+$('gateway-catalog').onclick=async()=>{
+  const catalog=await gatewayAction('model-catalog');if(!catalog)return;
+  $('catalog-note').textContent=catalog.note;$('catalog-models').replaceChildren();
+  const labels={'documented-variant':'Variante documentée · matériel non validé',unverified:'Modèle à vérifier'};
+  for(const model of catalog.models){
+    const card=textElement('section','','card');card.append(textElement('h3',model.name),textElement('p',labels[model.validation]),textElement('p',model.limits));
+    const source=textElement('a','Source du modèle');source.href=model.source;source.target='_blank';source.rel='noopener noreferrer';const actions=textElement('div','','device-actions');actions.append(source);
+    const button=textElement('button','Configurer cet éclairage','secondary');button.disabled=pending||gatewayLocked();
+    button.onclick=()=>{if(gatewayLocked())return;$('catalog-dialog').close();openDevice();$('new-name').value=model.name;$('new-adapter').value=model.adapter;adapterFields();if(model.profiles.length)$('new-profile').value=model.profiles[0];$('new-test-result').textContent='Profil candidat uniquement. Inspectez les DP avant de tester et enregistrer.';};
+    actions.append(button);card.append(actions);$('catalog-models').append(card);
+  }
+  const functions={on:'marche/arrêt',brightness:'luminosité',hue:'teinte',saturation:'saturation',colorTemperature:'blanc réglable'};
+  $('catalog-profiles').replaceChildren(...catalog.profiles.map(profile=>textElement('p',profile.id+' — '+profile.functions.map(field=>functions[field]).join(', ')+' · simulateur, sans validation physique')));
+  $('catalog-dialog').showModal();
+};
 $('gateway-update-check').onclick=async()=>{const result=await gatewayAction('update-check',{includePrerelease:$('gateway-update-preview').checked});if(result)$('gateway-update-result').textContent=result.available?`Version ${result.latest} disponible.`:'Aucune version plus récente sur ce canal.';};
 $('gateway-update-download').onclick=async()=>{const result=await gatewayAction('update-download',{includePrerelease:$('gateway-update-preview').checked});if(result)$('gateway-update-result').textContent=`Paquet vérifié : ${result.path}\nSHA-256 : ${result.sha256}\nQuittez Lantern avant installation. ${result.rollback}`;};
 $('gateway-backup').onclick=()=>openBackup('backup');$('gateway-restore').onclick=()=>openBackup('restore');$('close-backup').onclick=()=>{$('backup-dialog').close();$('backup-form').reset();};

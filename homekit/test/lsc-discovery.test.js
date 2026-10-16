@@ -38,6 +38,14 @@ test('discovery cancellation closes sockets promptly and empty networks are repo
   await assert.rejects(discoverLsc({ports:[0],host:'127.0.0.1',signal:abort.signal,onListening:()=>abort.abort()}),/annulée/);
   const result=await discoverLsc({ports:[0],host:'127.0.0.1',duration:15});assert.deepEqual(result.devices,[]);assert.match(result.message,/non associée/);
 });
+test('discovery excludes conflicting addresses for one ID instead of trusting the last packet',async()=>{
+  const sender=dgram.createSocket('udp4');
+  try{
+    const result=await discoverLsc({ports:[0],host:'127.0.0.1',duration:100,onListening:address=>{
+      sender.send(frame(device),address.port,'127.0.0.1');sender.send(frame({...device,version:'3.4'}),address.port,'127.0.0.1');
+    }});assert.deepEqual(result.devices,[]);assert.deepEqual(result.conflicts,[device.gwId]);
+  }finally{sender.close();}
+});
 test('discovery reports socket errors, supports a partial search and does not hang', {timeout:3000},async()=>{
   // An unassigned TEST-NET address fails asynchronously on Windows and Linux.
   await assert.rejects(discoverLsc({ports:[0],host:'192.0.2.201',duration:100}),/autorisations réseau/);
